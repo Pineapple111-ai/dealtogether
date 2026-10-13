@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getCampaigns, getCategories } from "@/lib/queries/campaigns";
+import ImageTile from "@/components/common/ImageTile";
+import { spaceImage } from "@/lib/images";
 
 export const metadata: Metadata = { title: "공간별 패키지" };
 
@@ -24,14 +26,13 @@ async function CategoryGrid() {
       {categories.map((cat) => {
         const count = campaigns.filter((c) => c.isPurchasable && c.package.category.slug === cat.slug).length;
         return (
-          <Link
+          <ImageTile
             key={cat.id}
             href={`/categories/${cat.slug}`}
-            className="flex aspect-square flex-col justify-between rounded-xl border border-line bg-soft p-6 transition-colors hover:border-navy/40"
-          >
-            <span className="text-xl font-bold">{cat.name}</span>
-            <span className="tabular text-sm text-sub">진행 중 {count}건</span>
-          </Link>
+            image={spaceImage(cat.slug) ?? cat.image_url}
+            title={cat.name}
+            meta={`진행 중 ${count}건`}
+          />
         );
       })}
     </div>

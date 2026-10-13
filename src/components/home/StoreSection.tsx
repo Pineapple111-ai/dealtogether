@@ -1,11 +1,13 @@
 import Link from "next/link";
 import StoreProductCard from "@/components/store/StoreProductCard";
+import ImageTile from "@/components/common/ImageTile";
+import PromoBanner from "@/components/common/PromoBanner";
 import { getStoreProducts, getActiveDiscountRules } from "@/lib/queries/store";
 import { STORE_CATEGORIES, describeRule } from "@/lib/store";
+import { IMG, storeCategoryImage } from "@/lib/images";
 
 export default async function StoreSection() {
   const [products, rules] = await Promise.all([getStoreProducts(), getActiveDiscountRules()]);
-  if (products.length === 0) return null;
 
   const picks = [...products]
     .filter((p) => p.inStock)
@@ -29,28 +31,30 @@ export default async function StoreSection() {
         <Link href="/store" className="shrink-0 text-sm font-semibold text-sub hover:text-navy">전체보기</Link>
       </div>
 
-      {rules.length > 0 && (
-        <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-1 rounded-xl bg-navy px-5 py-4 text-sm text-white">
-          <b className="text-base">세트 할인</b>
-          {rules.map((r) => (
-            <span key={r.id} className="text-white/80">{describeRule(r)}</span>
-          ))}
-        </div>
-      )}
+      <PromoBanner
+        image={IMG.store}
+        title="골라 담을수록 더 할인"
+        desc="원하는 가전을 자유롭게 조합하세요. 세트 할인이 자동으로 적용됩니다."
+        href="/store"
+        cta="가전 쇼핑하기"
+      >
+        {rules.length > 0 && (
+          <ul className="mt-4 space-y-1 text-sm text-white/85">
+            {rules.map((r) => <li key={r.id}>· {describeRule(r)}</li>)}
+          </ul>
+        )}
+      </PromoBanner>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {STORE_CATEGORIES.map((c) => (
-          <Link
+          <ImageTile
             key={c.key}
             href={`/store?category=${c.key}`}
-            className="flex flex-col justify-between gap-6 rounded-xl border border-line bg-white p-5 transition-colors hover:border-navy/40"
-          >
-            <span>
-              <span className="block text-lg font-bold">{c.label}</span>
-              <span className="mt-0.5 block text-xs text-sub">{c.desc}</span>
-            </span>
-            <span className="tabular text-[13px] text-sub">상품 {countBy(c.key)}개</span>
-          </Link>
+            image={storeCategoryImage(c.key)}
+            title={c.label}
+            sub={c.desc}
+            meta={`상품 ${countBy(c.key)}개`}
+          />
         ))}
       </div>
 

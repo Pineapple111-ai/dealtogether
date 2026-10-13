@@ -5,6 +5,8 @@ import StoreProductCard from "@/components/store/StoreProductCard";
 import { getStoreProducts, getActiveDiscountRules } from "@/lib/queries/store";
 import { getBrands } from "@/lib/queries/listing";
 import { STORE_CATEGORIES, describeRule, isStoreCategory } from "@/lib/store";
+import PromoBanner from "@/components/common/PromoBanner";
+import { IMG } from "@/lib/images";
 
 export const metadata: Metadata = { title: "가전 쇼핑" };
 
@@ -75,16 +77,19 @@ async function StoreView({ searchParams }: { searchParams: SP }) {
 
   return (
     <div className="mt-6">
-      {rules.length > 0 && (
-        <div className="mb-6 rounded-xl bg-navy px-5 py-4 text-white">
-          <p className="font-bold">골라 담을수록 더 할인</p>
-          <ul className="mt-1 space-y-0.5 text-sm text-white/80">
-            {rules.map((r) => (
-              <li key={r.id}>{r.name}: {describeRule(r)}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <div className="mb-6">
+        <PromoBanner
+          image={IMG.store}
+          title="골라 담을수록 더 할인"
+          desc="장바구니에 함께 담으면 세트 할인이 자동으로 적용됩니다."
+        >
+          {rules.length > 0 && (
+            <ul className="mt-4 space-y-1 text-sm text-white/85">
+              {rules.map((r) => <li key={r.id}>· {r.name}: {describeRule(r)}</li>)}
+            </ul>
+          )}
+        </PromoBanner>
+      </div>
 
       <div className="space-y-3 border-b border-line pb-5">
         <div className="flex gap-2 overflow-x-auto">

@@ -2,6 +2,9 @@ import Link from "next/link";
 import CampaignCard from "@/components/campaign/CampaignCard";
 import { getCampaigns, getCategories } from "@/lib/queries/campaigns";
 import type { CampaignView } from "@/lib/campaign";
+import ImageTile from "@/components/common/ImageTile";
+import PromoBanner from "@/components/common/PromoBanner";
+import { IMG, spaceImage } from "@/lib/images";
 
 function SectionHead({ title, desc, href }: { title: string; desc?: string; href?: string }) {
   return (
@@ -77,6 +80,17 @@ export default async function LiveSections() {
         </dl>
       </section>
 
+      {/* 공동구매 기획전 배너 */}
+      <section className="mx-auto max-w-site px-4 pt-16 md:px-6">
+        <PromoBanner
+          image={IMG.groupbuy}
+          title="공간별로 구성한 가전 패키지"
+          desc="거실·주방·세탁 가전을 한 번에, 공동구매 가격으로 만나보세요."
+          href="/campaigns"
+          cta="공동구매 전체보기"
+        />
+      </section>
+
       {/* 브랜드별 */}
       <section className="mx-auto max-w-site px-4 pt-16 md:px-6">
         <SectionHead title="브랜드별 공동구매" />
@@ -119,14 +133,13 @@ export default async function LiveSections() {
           {categories.map((cat) => {
             const count = active.filter((c) => c.package.category.slug === cat.slug).length;
             return (
-              <Link
+              <ImageTile
                 key={cat.id}
                 href={`/categories/${cat.slug}`}
-                className="flex aspect-[5/4] flex-col justify-between rounded-xl border border-line bg-soft p-5 transition-colors hover:border-navy/40"
-              >
-                <span className="text-lg font-bold">{cat.name}</span>
-                <span className="tabular text-[13px] text-sub">진행 중 {count}건</span>
-              </Link>
+                image={spaceImage(cat.slug) ?? cat.image_url}
+                title={cat.name}
+                meta={`진행 중 ${count}건`}
+              />
             );
           })}
         </div>

@@ -6,6 +6,7 @@ import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { ORDER_STATUS_LABEL, isAwaitingPayment } from "@/lib/order-status";
 import { won, formatDate } from "@/lib/format";
+import ChangePasswordForm from "@/components/auth/ChangePasswordForm";
 
 export const metadata: Metadata = { title: "마이페이지", robots: { index: false } };
 
@@ -64,13 +65,16 @@ async function MyPageContent() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="text-lg font-bold">{profile?.name ?? "회원"}님</p>
-            <p className="tabular text-sm text-sub">
-              {profile?.email}
-              {profile?.phone && ` · ${profile.phone}`}
-            </p>
+            <p className="tabular text-sm text-sub">{profile?.phone ?? profile?.email}</p>
           </div>
           <Link href="/order-lookup" className="text-sm text-sub underline underline-offset-4">비회원 주문 조회</Link>
         </div>
+        <details className="mt-4 border-t border-line pt-4">
+          <summary className="cursor-pointer text-sm font-semibold text-navy">비밀번호 변경</summary>
+          <div className="mt-3 max-w-sm">
+            <ChangePasswordForm />
+          </div>
+        </details>
       </section>
 
       <section>

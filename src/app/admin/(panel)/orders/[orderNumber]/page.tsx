@@ -237,6 +237,12 @@ async function OrderDetail({ params }: Params) {
                   <dd>{won(v)}</dd>
                 </div>
               ))}
+              {o.discount_total > 0 && (
+                <div className="flex justify-between font-semibold text-coral">
+                  <dt>세트 할인</dt>
+                  <dd>-{won(o.discount_total)}</dd>
+                </div>
+              )}
               <div className="flex justify-between border-t border-line pt-2 text-base font-extrabold">
                 <dt>주문금액</dt>
                 <dd className="text-navy">{won(o.grand_total)}</dd>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import LiveSections from "@/components/home/LiveSections";
+import StoreSection from "@/components/home/StoreSection";
 
 const STEPS = [
   { title: "패키지 선택", desc: "진행 중인 공동구매에서 원하는 가전 패키지를 고릅니다." },
@@ -45,17 +46,29 @@ export default function Home() {
           <p className="mt-5 max-w-lg text-base text-white/70 md:text-lg">
             삼성·LG 인기 가전을 특별한 공동구매 패키지로 만나보세요.
           </p>
-          <Link
-            href="/campaigns"
-            className="mt-8 inline-flex rounded-lg bg-coral px-7 py-4 text-[15px] font-bold text-white transition-colors hover:bg-coral-600"
-          >
-            공동구매 상품 보기
-          </Link>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link
+              href="/campaigns"
+              className="inline-flex rounded-lg bg-coral px-7 py-4 text-[15px] font-bold text-white transition-colors hover:bg-coral-600"
+            >
+              공동구매 상품 보기
+            </Link>
+            <Link
+              href="/store"
+              className="inline-flex rounded-lg border border-white/40 px-7 py-4 text-[15px] font-bold text-white transition-colors hover:bg-white/10"
+            >
+              가전 쇼핑하기
+            </Link>
+          </div>
         </div>
       </section>
 
       <Suspense fallback={<LiveSkeleton />}>
         <LiveSections />
+      </Suspense>
+
+      <Suspense fallback={<div className="mx-auto mt-20 h-80 max-w-site animate-pulse rounded-xl bg-soft" />}>
+        <StoreSection />
       </Suspense>
 
       {/* 이용방법 */}

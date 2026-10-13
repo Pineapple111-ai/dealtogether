@@ -8,6 +8,7 @@ type Props = {
   value: ItemSelection;
   need: number; // 이 구성품에 필요한 수량 (세트수 × 세트당 수량)
   onChange: (v: ItemSelection) => void;
+  plain?: boolean; // 쇼핑몰 상세: 구성품 헤더 숨김
 };
 
 /** 고정 조건을 만족하는 SKU 중 가장 적합한 것 선택 */
@@ -61,7 +62,7 @@ function Pill({
 
 const plus = (n: number) => (n > 0 ? ` +${won(n)}` : "");
 
-export default function ItemSelector({ item, value, need, onChange }: Props) {
+export default function ItemSelector({ item, value, need, onChange, plain = false }: Props) {
   const sku = item.skus.find((s) => s.id === value.skuId);
   const included = item.isRequired || value.included;
   const models = item.models.filter((m) => item.skus.some((s) => s.modelId === m.id));
@@ -79,7 +80,7 @@ export default function ItemSelector({ item, value, need, onChange }: Props) {
   return (
     <section className="rounded-xl border border-line bg-white">
       {/* 헤더 */}
-      <div className="flex items-start justify-between gap-3 p-5">
+      <div className={`flex items-start justify-between gap-3 p-5 ${plain ? "hidden" : ""}`}>
         <div>
           <div className="flex items-center gap-2">
             <h3 className="text-[17px] font-bold">{item.label}</h3>
@@ -113,7 +114,7 @@ export default function ItemSelector({ item, value, need, onChange }: Props) {
       </div>
 
       {included && (
-        <div className="space-y-5 border-t border-line p-5">
+        <div className={`space-y-5 p-5 ${plain ? "" : "border-t border-line"}`}>
           {/* 모델 */}
           {models.length > 0 && (
             <div>

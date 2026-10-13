@@ -55,13 +55,20 @@ async function PayView({ params, searchParams }: Props) {
       : ORDER_STATUS_LABEL[order.status] ?? order.status;
   const snap = order.campaign_snapshot;
 
-  const rows: [string, number][] = [
-    [`공동구매가 × ${order.quantity}`, order.base_price],
-    ["옵션 추가 금액", order.option_total],
-    ["선택 구성품", order.optional_item_total],
-    ["설치·부가 옵션", order.installation_fee],
-    ["배송비", order.shipping_fee],
-  ];
+  const isStore = (order as unknown as { order_type?: string }).order_type === "store";
+  const rows: [string, number][] = isStore
+    ? [
+        ["상품 금액", order.base_price],
+        ["설치·부가 옵션", order.installation_fee],
+        ["배송비", order.shipping_fee],
+      ]
+    : [
+        [`공동구매가 × ${order.quantity}`, order.base_price],
+        ["옵션 추가 금액", order.option_total],
+        ["선택 구성품", order.optional_item_total],
+        ["설치·부가 옵션", order.installation_fee],
+        ["배송비", order.shipping_fee],
+      ];
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 md:py-14">
@@ -133,6 +140,12 @@ async function PayView({ params, searchParams }: Props) {
               <dd>{v > 0 ? won(v) : k === "배송비" ? "무료" : "0원"}</dd>
             </div>
           ))}
+          {order.discount_total > 0 && (
+            <div className="flex justify-between font-semibold text-coral">
+              <dt>세트 할인</dt>
+              <dd>-{won(order.discount_total)}</dd>
+            </div>
+          )}
           <div className="flex justify-between border-t border-line pt-3 text-base font-bold">
             <dt>최종 결제 예정금액</dt>
             <dd className="text-navy">{won(order.grand_total)}</dd>

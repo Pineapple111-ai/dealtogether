@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import PhoneInput from "@/components/form/PhoneInput";
 import { won } from "@/lib/format";
 import { checkoutSchema } from "@/lib/checkout-schema";
-import type { Quote } from "@/lib/pricing";
 
 type DaumPostcodeData = { zonecode: string; roadAddress: string; jibunAddress: string; buildingName: string };
 declare global {
@@ -26,13 +25,12 @@ function loadPostcode(): Promise<void> {
 }
 
 type Props = {
-  slug: string;
-  selectionToken: string;
-  quote: Quote;
-  brandName: string;
-  campaignName: string;
-  packageName: string;
+  endpoint: string; // 주문 생성 API
+  payload: Record<string, unknown>; // 공동구매: {campaignSlug, selection} / 일반: {items}
+  total: number;
+  summary: React.ReactNode; // 우측 주문 요약
   showInstallation: boolean;
+  onSuccess?: () => void;
 };
 
 const inputCls =
@@ -124,20 +122,13 @@ export default function CheckoutForm(p: Props) {
     address2: f.address2,
     deliveryMemo: f.deliveryMemo,
     installation: p.showInstallation
-      ? {
-          wishDate: f.wishDate,
-          elevator: f.elevator,
-          floor: f.floor,
-          pickupOld: f.pickupOld,
-          environment: f.environment,
-          memo: f.installMemo,
-        }
+      ? { wishDate: f.wishDate, elevator: f.elevator, floor: f.floor, pickupOld: f.pickupOld, environment: f.environment, memo: f.installMemo }
       : undefined,
     agreePrivacy: f.agreePrivacy,
     agreeOrder: f.agreeOrder,
   });
 
-  const submit = async (expectedTotal = p.quote.grandTotal) => {
+  const submit = async (expectedTotal = p.total) => {
     setServerError("");
     const parsed = checkoutSchema.safeParse(buildForm());
     if (!parsed.success) {
@@ -147,27 +138,22 @@ export default function CheckoutForm(p: Props) {
         if (!map[key]) map[key] = issue.message;
       }
       setErrors(map);
-      document.querySelector("[data-error='true']")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => document.querySelector("[data-error='true']")?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
       return;
     }
     setErrors({});
     setSubmitting(true);
 
     try {
-      const res = await fetch("/api/orders", {
+      const res = await fetch(p.endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          campaignSlug: p.slug,
-          selection: p.selectionToken,
-          idempotencyKey,
-          expectedTotal,
-          form: parsed.data,
-        }),
+        body: JSON.stringify({ ...p.payload, idempotencyKey, expectedTotal, form: parsed.data }),
       });
       const json = await res.json();
 
       if (res.ok) {
+        p.onSuccess?.();
         router.replace(`/orders/${json.orderNumber}/pay?t=${json.token}`);
         return;
       }
@@ -176,7 +162,7 @@ export default function CheckoutForm(p: Props) {
           `주문 금액이 변경되었습니다.\n변경된 금액: ${won(json.newTotal)}\n이 금액으로 주문을 진행할까요?`
         );
         if (agree) return submit(json.newTotal);
-        setServerError("금액이 변경되어 주문이 진행되지 않았습니다. 상품 페이지에서 다시 확인해주세요.");
+        setServerError("금액이 변경되어 주문이 진행되지 않았습니다. 이전 화면에서 다시 확인해주세요.");
       } else {
         setServerError(json.message ?? "주문 생성 중 오류가 발생했습니다.");
       }
@@ -185,15 +171,6 @@ export default function CheckoutForm(p: Props) {
     }
     setSubmitting(false);
   };
-
-  const q = p.quote;
-  const priceRows: [string, number][] = [
-    [`공동구매가 × ${q.quantity}`, q.basePrice],
-    ["옵션 추가 금액", q.optionTotal],
-    ["선택 구성품", q.optionalItemTotal],
-    ["설치·부가 옵션", q.installationFee],
-    ["배송비", q.shippingFee],
-  ];
 
   const SubmitButton = ({ className }: { className: string }) => (
     <button
@@ -211,58 +188,16 @@ export default function CheckoutForm(p: Props) {
       <h1 className="text-2xl font-extrabold tracking-tight md:text-[28px]">주문서 작성</h1>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:gap-10">
-        {/* 주문 상품 + 금액 (모바일 상단, PC 우측) */}
         <aside className="order-first lg:order-last">
           <div className="space-y-4 lg:sticky lg:top-28">
-            <section className="rounded-xl border border-line bg-white p-5">
-              <p className="text-[13px] font-bold text-sub">{p.brandName}</p>
-              <p className="mt-0.5 text-xs text-sub">{p.campaignName}</p>
-              <h2 className="mt-1 text-lg font-bold">{p.packageName}</h2>
-              <ul className="mt-4 space-y-3 border-t border-line pt-4 text-sm">
-                {q.lines.map((l) => (
-                  <li key={l.packageItemId}>
-                    <p className="font-semibold">
-                      {l.itemLabel}
-                      {l.isOptional && <span className="ml-1 text-xs font-normal text-sub">(선택)</span>}
-                      <span className="tabular ml-1 font-normal text-sub">× {l.quantity}</span>
-                    </p>
-                    <p className="text-[13px] text-sub">
-                      {l.modelName} ({l.modelCode})
-                    </p>
-                    <p className="text-[13px] text-sub">
-                      {Object.entries(l.attributes).map(([k, v]) => `${k} ${v}`).join(", ")}
-                      {l.addons.length > 0 && ` · ${l.addons.map((a) => a.label).join(", ")}`}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <section className="rounded-xl border border-line bg-white p-5">
-              <dl className="tabular space-y-2 text-sm">
-                {priceRows.map(([k, v]) => (
-                  <div key={k} className="flex justify-between">
-                    <dt className="text-sub">{k}</dt>
-                    <dd>{v > 0 ? won(v) : k === "배송비" ? "무료" : "0원"}</dd>
-                  </div>
-                ))}
-              </dl>
-              <div className="mt-4 flex items-baseline justify-between border-t border-line pt-4">
-                <span className="font-bold">최종 결제 예정금액</span>
-                <span className="tabular text-2xl font-extrabold text-navy">{won(q.grandTotal)}</span>
-              </div>
-              {q.quoteRequired && (
-                <p className="mt-3 text-xs text-sub">현장 견적 옵션이 포함되어 설치 시 추가 비용이 발생할 수 있습니다.</p>
-              )}
-              <SubmitButton className="mt-5 hidden h-14 w-full text-base lg:block" />
-              <p className="mt-3 text-xs leading-relaxed text-sub">
-                주문 생성 후 외부 안전결제 페이지로 이동합니다. 결제가 확인되어야 공동구매 참여가 확정됩니다.
-              </p>
-            </section>
+            {p.summary}
+            <SubmitButton className="hidden h-14 w-full text-base lg:block" />
+            <p className="text-xs leading-relaxed text-sub">
+              주문 생성 후 외부 안전결제 페이지로 이동합니다. 결제가 확인되어야 주문이 확정됩니다.
+            </p>
           </div>
         </aside>
 
-        {/* 입력 폼 */}
         <div className="space-y-5">
           <Section title="주문자 정보">
             <div data-error={!!errors.buyerName}>
@@ -385,19 +320,16 @@ export default function CheckoutForm(p: Props) {
           </Section>
 
           {serverError && (
-            <p className="rounded-xl bg-coral/10 p-4 text-sm font-semibold text-coral" role="alert">
-              {serverError}
-            </p>
+            <p className="rounded-xl bg-coral/10 p-4 text-sm font-semibold text-coral" role="alert">{serverError}</p>
           )}
         </div>
       </div>
 
-      {/* 모바일 하단 고정 */}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))] lg:hidden">
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-xs text-sub">최종 결제 예정금액</p>
-            <p className="tabular truncate text-lg font-extrabold text-navy">{won(q.grandTotal)}</p>
+            <p className="tabular truncate text-lg font-extrabold text-navy">{won(p.total)}</p>
           </div>
           <SubmitButton className="h-12 shrink-0 px-6" />
         </div>

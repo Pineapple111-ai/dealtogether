@@ -10,6 +10,7 @@ import {
   updateProduct, createModel, setModelStatus, createSku, updateSku,
   createAddonGroup, createAddonValue, updateAddonValue,
 } from "../actions";
+import StoreSection from "./StoreSection";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -21,6 +22,8 @@ type Product = {
   id: string; name: string; product_type: string; status: string; description: string | null;
   attribute_keys: string[]; brand: { name: string };
   product_models: Model[]; addon_groups: AddonGroup[];
+  store_visible: boolean; store_category: string | null; bundle_eligible: boolean;
+  store_thumbnail: string | null; store_summary: string | null;
 };
 
 const input = "h-10 rounded-lg border border-line px-3 text-sm outline-none focus:border-navy";
@@ -189,6 +192,8 @@ async function ProductDetail({ params }: Params) {
           <SubmitButton>모델 추가</SubmitButton>
         </ActionForm>
       </section>
+
+      <StoreSection product={p} models={models} />
 
       {/* 부가 옵션 */}
       <section className="rounded-xl bg-white p-5">

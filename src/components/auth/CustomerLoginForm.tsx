@@ -2,40 +2,47 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import PhoneInput from "@/components/form/PhoneInput";
 import { createClient } from "@/lib/supabase/client";
+import { phoneToAuthEmail } from "@/lib/auth/phone-login";
+import { PHONE_REGEX } from "@/lib/phone";
 
 const input = "h-12 w-full rounded-lg border border-line px-3.5 text-[15px] outline-none focus:border-navy";
 
 export default function CustomerLoginForm() {
-  const router = useRouter();
   const params = useSearchParams();
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(
-    params.get("error") === "link" ? "인증 링크가 만료되었거나 올바르지 않습니다. 다시 시도해주세요." : ""
-  );
+  const [error, setError] = useState("");
 
   const next = params.get("next");
   const safeNext = next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/admin") ? next : "/mypage";
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError("");
-    const { error } = await createClient().auth.signInWithPassword({ email: email.trim(), password });
-    if (error) {
-      setError(
-        error.message.toLowerCase().includes("not confirmed")
-          ? "이메일 인증이 완료되지 않았습니다. 가입 시 받은 메일의 링크를 눌러주세요."
-          : "이메일 또는 비밀번호가 올바르지 않습니다."
-      );
-      setLoading(false);
+    if (!PHONE_REGEX.test(phone)) {
+      setError("휴대폰 번호를 010-0000-0000 형식으로 입력해주세요.");
       return;
     }
-    router.replace(safeNext);
-    router.refresh();
+    setLoading(true);
+    try {
+      const { error } = await createClient().auth.signInWithPassword({
+        email: phoneToAuthEmail(phone),
+        password,
+      });
+      if (error) {
+        setError("휴대폰 번호 또는 비밀번호가 올바르지 않습니다.");
+        setLoading(false);
+        return;
+      }
+      window.location.assign(safeNext);
+    } catch {
+      setError("로그인 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
+      setLoading(false);
+    }
   };
 
   return (
@@ -43,7 +50,7 @@ export default function CustomerLoginForm() {
       <h1 className="text-2xl font-extrabold tracking-tight">로그인</h1>
 
       <div className="mt-8 space-y-3">
-        <input type="email" required autoComplete="email" placeholder="이메일" className={input} value={email} onChange={(e) => setEmail(e.target.value)} />
+        <PhoneInput className={input} value={phone} onChange={setPhone} required />
         <input type="password" required autoComplete="current-password" placeholder="비밀번호" className={input} value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
 
@@ -56,10 +63,11 @@ export default function CustomerLoginForm() {
       <div className="mt-5 flex justify-center gap-4 text-sm text-sub">
         <Link href="/signup" className="font-semibold text-navy">회원가입</Link>
         <span className="text-line">|</span>
-        <Link href="/forgot-password">비밀번호 찾기</Link>
-        <span className="text-line">|</span>
         <Link href="/order-lookup">비회원 주문조회</Link>
       </div>
+      <p className="mt-4 text-center text-xs text-sub">
+        비밀번호를 잊으셨나요? <Link href="/support/inquiry" className="underline">고객센터</Link>로 문의하시면 임시 비밀번호를 안내해드립니다.
+      </p>
     </form>
   );
 }

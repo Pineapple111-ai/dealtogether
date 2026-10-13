@@ -24,6 +24,7 @@ type SP = Promise<{ status?: string; q?: string; page?: string }>;
 
 type Row = {
   order_number: string;
+  order_type: string;
   buyer_name: string;
   buyer_phone: string;
   quantity: number;
@@ -56,7 +57,7 @@ async function OrdersTable({ searchParams }: { searchParams: SP }) {
   let query = createAdminClient()
     .from("orders")
     .select(
-      "order_number, buyer_name, buyer_phone, quantity, grand_total, status, expires_at, created_at, campaign_snapshot, payment_records(status, amount_mismatch, created_at)",
+        "order_number, order_type, buyer_name, buyer_phone, quantity, grand_total, status, expires_at, created_at, campaign_snapshot, payment_records(status, amount_mismatch, created_at)",
       { count: "exact" }
     )
     .order("created_at", { ascending: false })
@@ -156,7 +157,10 @@ async function OrdersTable({ searchParams }: { searchParams: SP }) {
                     {o.buyer_name}
                     <span className="block text-xs text-sub">{o.buyer_phone}</span>
                   </td>
-                  <td className="max-w-56 truncate px-4 py-3">{o.campaign_snapshot?.package_name}</td>
+                  <td className="max-w-56 truncate px-4 py-3">
+                    {o.order_type === "store" && <span className="mr-1 rounded bg-navy/10 px-1.5 py-0.5 text-xs font-bold text-navy">일반</span>}
+                    {o.campaign_snapshot?.package_name}
+                  </td>
                   <td className="px-4 py-3 text-right">{o.quantity}</td>
                   <td className="px-4 py-3 text-right font-semibold">{won(o.grand_total)}</td>
                   <td className="px-4 py-3">

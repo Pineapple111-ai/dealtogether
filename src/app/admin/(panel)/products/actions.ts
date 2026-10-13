@@ -227,3 +227,77 @@ export async function updateAddonValue(fd: FormData): Promise<ActionResult> {
   await log(staff.id, "update_addon_value", id, { price });
   return done();
 }
+
+// ---------- 일반 쇼핑몰 ----------
+const STORE_KEYS = ["video", "kitchen", "laundry", "air", "life"];
+
+export async function updateStoreSettings(fd: FormData): Promise<ActionResult> {
+  const staff = await requireStaff("products");
+  const id = str(fd, "id");
+  if (!uuid.safeParse(id).success) return { ok: false, error: "잘못된 요청입니다." };
+
+  const visible = bool(fd, "store_visible");
+  const category = str(fd, "store_category");
+  if (category && !STORE_KEYS.includes(category)) return { ok: false, error: "분류를 확인해주세요." };
+  if (visible && !category) return { ok: false, error: "쇼핑몰에 노출하려면 분류를 선택해주세요." };
+
+  const thumb = str(fd, "store_thumbnail");
+  if (thumb) {
+    try {
+      if (new URL(thumb).protocol !== "https:") throw new Error();
+    } catch {
+      return { ok: false, error: "대표 이미지는 https:// 주소로 입력해주세요." };
+    }
+  }
+
+  const fields = {
+    store_visible: visible,
+    store_category: category || null,
+    bundle_eligible: bool(fd, "bundle_eligible"),
+    store_thumbnail: thumb || null,
+    store_summary: str(fd, "store_summary").slice(0, 200) || null,
+  };
+  const { error } = await db().from("products").update(fields).eq("id", id);
+  if (error) return fail(error);
+  await log(staff.id, "update_store_settings", id, fields);
+  revalidatePath("/", "layout");
+  return { ok: true, message: "저장되었습니다." };
+}
+
+/** SKU별 정상가·판매가 일괄 저장. 판매가를 비우면 쇼핑몰 판매 안 함 */
+export async function saveStorePrices(fd: FormData): Promise<ActionResult> {
+  const staff = await requireStaff("products");
+  const productId = str(fd, "product_id");
+  if (!uuid.safeParse(productId).success) return { ok: false, error: "잘못된 요청입니다." };
+
+  const skuIds = fd.getAll("sku_id").map(String).filter((v) => uuid.safeParse(v).success);
+  const upserts: { sku_id: string; list_price: number; sale_price: number; is_active: boolean }[] = [];
+  const removes: string[] = [];
+
+  for (const skuId of skuIds) {
+    const saleRaw = str(fd, `sale:${skuId}`);
+    const listRaw = str(fd, `list:${skuId}`);
+    if (!saleRaw) {
+      removes.push(skuId);
+      continue;
+    }
+    const sale = num(fd, `sale:${skuId}`);
+    const list = listRaw ? num(fd, `list:${skuId}`) : sale;
+    if (!Number.isInteger(sale) || sale <= 0) return { ok: false, error: "판매가는 0보다 큰 숫자로 입력해주세요." };
+    if (!Number.isInteger(list) || list < sale) return { ok: false, error: "정상가는 판매가 이상이어야 합니다." };
+    upserts.push({ sku_id: skuId, list_price: list, sale_price: sale, is_active: bool(fd, `active:${skuId}`) });
+  }
+
+  const sb = db();
+  if (upserts.length) {
+    const { error } = await sb.from("store_prices").upsert(upserts);
+    if (error) return fail(error);
+  }
+  if (removes.length) {
+    const { error } = await sb.from("store_prices").delete().in("sku_id", removes);
+    if (error) return fail(error);
+  }
+  await log(staff.id, "save_store_prices", productId, { priced: upserts.length, removed: removes.length });
+  revalidatePath("/", "layout");
+  return { ok: true, message: `판매가 ${upserts.length}개가 저장되었습니다.` };
+}

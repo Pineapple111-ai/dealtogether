@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Search, Menu, X, User, Heart } from "lucide-react";
+import { Search, Menu, X, User, ShoppingCart } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useCart } from "@/lib/cart";
 
 const NAV = [
   { href: "/campaigns", label: "전체 공동구매" },
+  { href: "/store", label: "가전 쇼핑" },
   { href: "/brands/samsung", label: "삼성 가전" },
   { href: "/brands/lg", label: "LG 가전" },
   { href: "/categories", label: "공간별 패키지" },
@@ -31,6 +33,8 @@ export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const loggedIn = useLoggedIn();
+  const cart = useCart();
+  const cartCount = cart?.reduce((s, i) => s + i.quantity, 0) ?? 0;
   const [open, setOpen] = useState(false);
 
   useEffect(() => setOpen(false), [pathname]);
@@ -93,8 +97,13 @@ export default function Header() {
           <Link href="/search" aria-label="검색" className="grid h-10 w-10 place-items-center rounded-full hover:bg-soft">
             <Search size={20} />
           </Link>
-          <Link href="/mypage/favorites" aria-label="찜한 패키지" className="hidden h-10 w-10 place-items-center rounded-full hover:bg-soft sm:grid">
-            <Heart size={20} />
+          <Link href="/cart" aria-label="장바구니" className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-soft">
+            <ShoppingCart size={20} />
+            {cartCount > 0 && (
+              <span className="tabular absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-coral px-1 text-[11px] font-bold text-white">
+                {cartCount}
+              </span>
+            )}
           </Link>
           <Link href={loggedIn ? "/mypage" : "/login"} aria-label="마이페이지" className="grid h-10 w-10 place-items-center rounded-full hover:bg-soft">
             <User size={20} />

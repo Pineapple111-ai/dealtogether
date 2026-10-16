@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { toCampaignView, type CampaignRow, type CampaignStats } from "@/lib/campaign";
-import type { CampaignDetail, DetailItem } from "@/lib/pricing";
+import type { CampaignDetail, DetailAddonGroup, DetailItem } from "@/lib/pricing";
 
 type RawAddonValue = {
   id: string; label: string; price: number; is_default: boolean;
@@ -20,6 +20,7 @@ type RawSkuLink = {
     model: {
       id: string; model_code: string; model_name: string; image_url: string | null;
       sort_order: number; status: string;
+      product: { id: string; name: string; status: string; addon_groups: RawAddonGroup[] } | null;
     } | null;
   } | null;
 };
@@ -42,6 +43,11 @@ type RawDetail = CampaignRow & {
   };
 };
 
+const ADDON_SELECT = `addon_groups(
+  id, name, select_type, ui_type, is_required, sort_order,
+  addon_values(id, label, price, is_default, is_quote_required, sort_order, is_active)
+)`;
+
 const DETAIL_SELECT = `
   id, name, slug, start_at, end_at, target_participants, max_quantity, per_user_limit,
   campaign_price, closing_soon_hours, manual_state,
@@ -51,18 +57,15 @@ const DETAIL_SELECT = `
     category:categories!inner(name, slug),
     package_items(
       id, label, is_required, optional_price, quantity, sort_order,
-      product:products(
-        id, name, product_type, attribute_keys,
-        addon_groups(
-          id, name, select_type, ui_type, is_required, sort_order,
-          addon_values(id, label, price, is_default, is_quote_required, sort_order, is_active)
-        )
-      ),
+      product:products(id, name, product_type, attribute_keys, ${ADDON_SELECT}),
       package_item_skus(
         price_adjustment, is_default,
         sku:product_skus(
           id, sku, attributes, image_url, status, sort_order,
-          model:product_models(id, model_code, model_name, image_url, sort_order, status)
+          model:product_models(
+            id, model_code, model_name, image_url, sort_order, status,
+            product:products(id, name, status, ${ADDON_SELECT})
+          )
         )
       )
     )
@@ -77,11 +80,32 @@ function publicClient() {
   );
 }
 
+function mapGroups(groups: RawAddonGroup[] | undefined): DetailAddonGroup[] {
+  return (groups ?? [])
+    .slice()
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((g) => ({
+      id: g.id,
+      name: g.name,
+      selectType: g.select_type,
+      uiType: g.ui_type,
+      isRequired: g.is_required,
+      values: g.addon_values
+        .filter((v) => v.is_active)
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map((v) => ({
+          id: v.id,
+          label: v.label,
+          price: v.price,
+          isDefault: v.is_default,
+          isQuoteRequired: v.is_quote_required,
+        })),
+    }))
+    .filter((g) => g.values.length > 0);
+}
+
 /** 공동구매 상세 (서버 전용). client를 넘기면 해당 클라이언트로 조회 */
-export async function getCampaignDetail(
-  slug: string,
-  client?: SupabaseClient
-): Promise<CampaignDetail | null> {
+export async function getCampaignDetail(slug: string, client?: SupabaseClient): Promise<CampaignDetail | null> {
   await connection();
   const sb = client ?? publicClient();
 
@@ -98,9 +122,7 @@ export async function getCampaignDetail(
   const row = data as unknown as RawDetail;
   const rawItems = [...(row.package.package_items ?? [])].sort((a, b) => a.sort_order - b.sort_order);
 
-  const skuIds = rawItems.flatMap((i) =>
-    i.package_item_skus.map((l) => l.sku?.id).filter((x): x is string => !!x)
-  );
+  const skuIds = rawItems.flatMap((i) => i.package_item_skus.map((l) => l.sku?.id).filter((x): x is string => !!x));
 
   const [statsRes, availRes] = await Promise.all([
     sb.from("campaign_stats").select("*").eq("campaign_id", row.id).maybeSingle(),
@@ -111,26 +133,29 @@ export async function getCampaignDetail(
   if (statsRes.error) throw new Error(`집계 조회 실패: ${statsRes.error.message}`);
   if (availRes.error) throw new Error(`재고 조회 실패: ${availRes.error.message}`);
 
-  const availMap = new Map(
-    ((availRes.data ?? []) as { sku_id: string; available: number }[]).map((a) => [a.sku_id, a.available])
-  );
+  const availMap = new Map(((availRes.data ?? []) as { sku_id: string; available: number }[]).map((a) => [a.sku_id, a.available]));
 
   const items: DetailItem[] = rawItems.map((ri) => {
     const links = ri.package_item_skus.filter(
-      (l) => l.sku && l.sku.status !== "inactive" && l.sku.model && l.sku.model.status === "active"
+      (l) =>
+        l.sku &&
+        l.sku.status !== "inactive" &&
+        l.sku.model &&
+        l.sku.model.status === "active" &&
+        (!l.sku.model.product || l.sku.model.product.status === "active")
     );
 
     const modelMap = new Map<string, DetailItem["models"][number]>();
     for (const l of links) {
       const m = l.sku!.model!;
-      modelMap.set(m.id, {
-        id: m.id,
-        code: m.model_code,
-        name: m.model_name,
-        imageUrl: m.image_url,
-        sortOrder: m.sort_order,
-      });
+      modelMap.set(m.id, { id: m.id, code: m.model_code, name: m.model_name, imageUrl: m.image_url, sortOrder: m.sort_order });
     }
+
+    // 정렬: 기본 SKU 먼저, 그 다음 추가금 낮은 순
+    const sorted = [...links].sort(
+      (a, b) => Number(b.is_default) - Number(a.is_default) || a.price_adjustment - b.price_adjustment || a.sku!.sort_order - b.sku!.sort_order
+    );
+    const modelOrder = [...new Set(sorted.map((l) => l.sku!.model!.id))];
 
     return {
       id: ri.id,
@@ -141,10 +166,10 @@ export async function getCampaignDetail(
       productName: ri.product?.name ?? ri.label,
       productType: ri.product?.product_type ?? "",
       attributeKeys: ri.product?.attribute_keys ?? [],
-      models: [...modelMap.values()].sort((a, b) => a.sortOrder - b.sortOrder),
-      skus: links
-        .sort((a, b) => a.sku!.sort_order - b.sku!.sort_order)
-        .map((l) => ({
+      models: modelOrder.map((id, i) => ({ ...modelMap.get(id)!, sortOrder: i })),
+      skus: sorted.map((l) => {
+        const p = l.sku!.model!.product;
+        return {
           id: l.sku!.id,
           sku: l.sku!.sku,
           modelId: l.sku!.model!.id,
@@ -153,27 +178,12 @@ export async function getCampaignDetail(
           adjustment: l.price_adjustment,
           isDefault: l.is_default,
           available: l.sku!.status === "active" ? availMap.get(l.sku!.id) ?? 0 : 0,
-        })),
-      addonGroups: (ri.product?.addon_groups ?? [])
-        .sort((a, b) => a.sort_order - b.sort_order)
-        .map((g) => ({
-          id: g.id,
-          name: g.name,
-          selectType: g.select_type,
-          uiType: g.ui_type,
-          isRequired: g.is_required,
-          values: g.addon_values
-            .filter((v) => v.is_active)
-            .sort((a, b) => a.sort_order - b.sort_order)
-            .map((v) => ({
-              id: v.id,
-              label: v.label,
-              price: v.price,
-              isDefault: v.is_default,
-              isQuoteRequired: v.is_quote_required,
-            })),
-        }))
-        .filter((g) => g.values.length > 0),
+          productId: p?.id,
+          productName: p?.name,
+          addonGroups: p ? mapGroups(p.addon_groups) : undefined,
+        };
+      }),
+      addonGroups: mapGroups(ri.product?.addon_groups),
     };
   });
 

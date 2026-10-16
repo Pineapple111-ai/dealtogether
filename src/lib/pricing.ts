@@ -10,6 +10,9 @@ export type DetailSku = {
   adjustment: number; // 패키지 기준 추가금 (단위당)
   isDefault: boolean;
   available: number; // 판매 가능 재고
+  productId?: string; // SKU가 속한 제품 (구성품 기본 제품과 다를 수 있음)
+  productName?: string;
+  addonGroups?: DetailAddonGroup[]; // SKU 제품의 설치·부가 옵션
 };
 
 export type DetailModel = {
@@ -41,8 +44,8 @@ export type DetailItem = {
   id: string;
   label: string;
   isRequired: boolean;
-  optionalPrice: number; // 선택 구성품 단가
-  quantity: number; // 세트당 수량
+  optionalPrice: number;
+  quantity: number;
   productName: string;
   productType: string;
   attributeKeys: string[];
@@ -65,7 +68,7 @@ export type CampaignDetail = {
 export type ItemSelection = {
   included: boolean;
   skuId: string | null;
-  addons: Record<string, string[]>; // groupId → valueIds
+  addons: Record<string, string[]>;
 };
 
 export type Selection = {
@@ -85,10 +88,10 @@ export type QuoteLine = {
   skuCode: string;
   attributes: Record<string, string>;
   addons: { group: string; label: string; price: number }[];
-  quantity: number; // 세트수 × 세트당 수량
-  itemPrice: number; // 단가
-  skuAdjustment: number; // 단가
-  addonTotal: number; // 단가
+  quantity: number;
+  itemPrice: number;
+  skuAdjustment: number;
+  addonTotal: number;
 };
 
 export type Quote = {
@@ -100,10 +103,30 @@ export type Quote = {
   shippingFee: number;
   discountTotal: number;
   grandTotal: number;
-  listTotal: number; // 정상가 합계 (표시용)
+  listTotal: number;
   quoteRequired: boolean;
   lines: QuoteLine[];
 };
+
+/** 선택한 SKU 기준 옵션 그룹 (SKU 제품 옵션이 있으면 그것, 없으면 구성품 기본 제품 옵션) */
+export function groupsFor(item: DetailItem, sku?: DetailSku | null): DetailAddonGroup[] {
+  return sku?.addonGroups ?? item.addonGroups;
+}
+
+/** 옵션 기본 선택값 */
+export function defaultAddons(groups: DetailAddonGroup[]): Record<string, string[]> {
+  const addons: Record<string, string[]> = {};
+  for (const g of groups) {
+    const defaults = g.values.filter((v) => v.isDefault).map((v) => v.id);
+    if (g.selectType === "single") {
+      const pick = defaults[0] ?? (g.isRequired ? g.values[0]?.id : undefined);
+      addons[g.id] = pick ? [pick] : [];
+    } else {
+      addons[g.id] = defaults;
+    }
+  }
+  return addons;
+}
 
 export function maxPurchasable(d: CampaignDetail) {
   return Math.max(Math.min(d.perUserLimit, d.campaign.remaining), 0);
@@ -118,18 +141,11 @@ export function defaultSelection(d: CampaignDetail): Selection {
       item.skus.find((s) => s.available >= item.quantity) ??
       item.skus.find((s) => s.isDefault) ??
       item.skus[0];
-
-    const addons: Record<string, string[]> = {};
-    for (const g of item.addonGroups) {
-      const defaults = g.values.filter((v) => v.isDefault).map((v) => v.id);
-      if (g.selectType === "single") {
-        const pick = defaults[0] ?? (g.isRequired ? g.values[0]?.id : undefined);
-        addons[g.id] = pick ? [pick] : [];
-      } else {
-        addons[g.id] = defaults;
-      }
-    }
-    items[item.id] = { included: item.isRequired, skuId: sku?.id ?? null, addons };
+    items[item.id] = {
+      included: item.isRequired,
+      skuId: sku?.id ?? null,
+      addons: defaultAddons(groupsFor(item, sku)),
+    };
   }
   return { quantity: 1, items };
 }
@@ -167,15 +183,11 @@ export function computeQuote(d: CampaignDetail, sel: Selection): { ok: boolean; 
 
     const need = item.quantity * q;
     const prev = skuNeed.get(sku.id);
-    skuNeed.set(sku.id, {
-      need: (prev?.need ?? 0) + need,
-      available: sku.available,
-      label: item.label,
-    });
+    skuNeed.set(sku.id, { need: (prev?.need ?? 0) + need, available: sku.available, label: item.label });
 
     const addons: QuoteLine["addons"] = [];
     let addonUnit = 0;
-    for (const g of item.addonGroups) {
+    for (const g of groupsFor(item, sku)) {
       const picked = [...new Set(s?.addons?.[g.id] ?? [])];
       const values = picked.map((id) => g.values.find((v) => v.id === id));
       if (values.some((v) => !v)) {
@@ -201,7 +213,7 @@ export function computeQuote(d: CampaignDetail, sel: Selection): { ok: boolean; 
       skuId: sku.id,
       isOptional: !item.isRequired,
       itemLabel: item.label,
-      productName: item.productName,
+      productName: sku.productName ?? item.productName,
       modelCode: model.code,
       modelName: model.name,
       skuCode: sku.sku,
@@ -254,9 +266,7 @@ type Compact = { q: number; i: Record<string, [0 | 1, string | null, Record<stri
 export function encodeSelection(sel: Selection): string {
   const compact: Compact = {
     q: sel.quantity,
-    i: Object.fromEntries(
-      Object.entries(sel.items).map(([k, v]) => [k, [v.included ? 1 : 0, v.skuId, v.addons]])
-    ),
+    i: Object.fromEntries(Object.entries(sel.items).map(([k, v]) => [k, [v.included ? 1 : 0, v.skuId, v.addons]])),
   };
   return btoa(JSON.stringify(compact)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }

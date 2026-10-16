@@ -1,7 +1,7 @@
 "use client";
 
 import { won } from "@/lib/format";
-import type { DetailItem, DetailSku, ItemSelection } from "@/lib/pricing";
+import { groupsFor, defaultAddons, type DetailItem, type DetailSku, type ItemSelection } from "@/lib/pricing";
 
 type Props = {
   item: DetailItem;
@@ -67,7 +67,15 @@ export default function ItemSelector({ item, value, need, onChange, plain = fals
   const included = item.isRequired || value.included;
   const models = item.models.filter((m) => item.skus.some((s) => s.modelId === m.id));
 
-  const setSku = (next?: DetailSku) => next && onChange({ ...value, skuId: next.id });
+  const setSku = (next?: DetailSku) => {
+    if (!next) return;
+    const sameProduct = (next.productId ?? null) === (sku?.productId ?? null);
+    onChange({
+      ...value,
+      skuId: next.id,
+      addons: sameProduct ? value.addons : defaultAddons(groupsFor(item, next)),
+    });
+  };
 
   const toggleAddon = (groupId: string, valueId: string, single: boolean, required: boolean) => {
     const cur = value.addons[groupId] ?? [];
@@ -186,7 +194,7 @@ export default function ItemSelector({ item, value, need, onChange, plain = fals
           )}
 
           {/* 설치·부가 옵션 */}
-          {item.addonGroups.map((g) => {
+          {groupsFor(item, sku).map((g) => {
             const picked = value.addons[g.id] ?? [];
             const single = g.selectType === "single";
             return (

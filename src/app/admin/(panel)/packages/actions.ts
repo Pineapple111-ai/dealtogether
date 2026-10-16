@@ -245,6 +245,29 @@ export async function savePackageItemSkus(fd: FormData): Promise<ActionResult> {
     return { ok: false, error: "허용한 SKU 중 기본 선택을 하나 지정해주세요." };
   }
 
+  // 구성품과 같은 브랜드·제품종류의 SKU만 허용
+  const { data: itemRow } = await db()
+    .from("package_items")
+    .select("product:products(brand_id, product_type)")
+    .eq("id", itemId)
+    .single();
+  const base = (itemRow as unknown as { product: { brand_id: string; product_type: string } | null } | null)?.product;
+  if (!base) return { ok: false, error: "구성품 제품을 찾을 수 없습니다." };
+  if (rows.length) {
+    const { data: skuRows } = await db()
+      .from("product_skus")
+      .select("id, model:product_models(product:products(brand_id, product_type))")
+      .in("id", rows.map((r) => r.sku_id));
+    const okIds = new Set(
+      ((skuRows ?? []) as unknown as { id: string; model: { product: { brand_id: string; product_type: string } | null } | null }[])
+        .filter((s) => s.model?.product?.brand_id === base.brand_id && s.model?.product?.product_type === base.product_type)
+        .map((s) => s.id)
+    );
+    if (rows.some((r) => !okIds.has(r.sku_id))) {
+      return { ok: false, error: "구성품과 브랜드·제품종류가 같은 SKU만 허용할 수 있습니다." };
+    }
+  }
+
   const sb = db();
   const { error: delErr } = await sb.from("package_item_skus").delete().eq("package_item_id", itemId);
   if (delErr) return fail(delErr);

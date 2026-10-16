@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Receipt, Megaphone, Package, Boxes, Users, Headphones, FileText, Settings, LogOut, Percent } from "lucide-react";
+import { LayoutDashboard, Receipt, Megaphone, Package, Boxes, Users, Headphones, FileText, Settings, LogOut, Percent, FileSpreadsheet } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 const MENU = [
@@ -11,6 +11,7 @@ const MENU = [
   { href: "/admin/campaigns", label: "공동구매 캠페인", icon: Megaphone, area: "campaigns", ready: true },
   { href: "/admin/packages", label: "패키지", icon: Package, area: "products", ready: true },
   { href: "/admin/products", label: "제품·옵션", icon: Boxes, area: "products", ready: true },
+  { href: "/admin/import", label: "상품 일괄 등록", icon: FileSpreadsheet, area: "products", ready: true },
   { href: "/admin/discounts", label: "세트 할인", icon: Percent, area: "products", ready: true },
   { href: "/admin/members", label: "회원", icon: Users, area: "members", ready: true },
   { href: "/admin/inquiries", label: "상담", icon: Headphones, area: "cs", ready: true },

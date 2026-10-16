@@ -14,10 +14,17 @@ type Params = { params: Promise<{ id: string }> };
 
 type Sku = { id: string; sku: string; attributes: Record<string, string>; status: string; stock: number };
 type Model = { id: string; model_code: string; model_name: string; status: string; sort_order: number; product_skus: Sku[] };
+type CandProduct = { id: string; name: string; product_type: string; status: string; product_models: Model[] };
+type Allowed = {
+  sku_id: string;
+  price_adjustment: number;
+  is_default: boolean;
+  sku: { id: string; sku: string; attributes: Record<string, string>; status: string; stock: number; model: { model_name: string; model_code: string } | null } | null;
+};
 type Item = {
   id: string; label: string; is_required: boolean; optional_price: number; quantity: number; sort_order: number;
-  product: { id: string; name: string; product_type: string; product_models: Model[] } | null;
-  package_item_skus: { sku_id: string; price_adjustment: number; is_default: boolean }[];
+  product: { id: string; name: string; product_type: string } | null;
+  package_item_skus: Allowed[];
 };
 type Pkg = {
   id: string; name: string; slug: string; product_code: string | null; summary: string | null; description: string | null;
@@ -35,6 +42,29 @@ export default function AdminPackageDetail({ params }: Params) {
   );
 }
 
+function SkuRow({ s, allowed }: { s: Sku & { modelLabel?: string }; allowed?: Allowed }) {
+  return (
+    <div className="flex flex-wrap items-center gap-3 border-t border-line px-3 py-2 text-sm first:border-t-0">
+      <label className="flex min-w-60 flex-1 items-center gap-2">
+        <input type="checkbox" name={`allow:${s.id}`} defaultChecked={!!allowed} className="h-4 w-4 accent-[#102a43]" />
+        <span className="font-semibold">{s.sku}</span>
+        {s.modelLabel && <span className="text-sub">{s.modelLabel}</span>}
+        <span className="text-sub">{Object.values(s.attributes ?? {}).join(" · ")}</span>
+        <span className="tabular text-xs text-sub">재고 {s.stock}</span>
+        {s.status !== "active" && <span className="text-xs text-coral">{s.status === "soldout" ? "품절" : "숨김"}</span>}
+      </label>
+      <label className="flex items-center gap-1.5 text-xs text-sub">
+        추가금
+        <input name={`adj:${s.id}`} type="number" min={0} step={1000} defaultValue={allowed?.price_adjustment ?? 0} className={`${input} tabular h-9 w-28`} />
+      </label>
+      <label className="flex items-center gap-1.5 text-xs">
+        <input type="radio" name="default_sku" value={s.id} defaultChecked={!!allowed?.is_default} className="h-4 w-4 accent-[#102a43]" />
+        기본
+      </label>
+    </div>
+  );
+}
+
 async function PackageDetail({ params }: Params) {
   await connection();
   await requireStaff("products");
@@ -42,19 +72,27 @@ async function PackageDetail({ params }: Params) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
 
   const sb = createAdminClient();
-  const [{ data }, { data: categories }, { data: products }] = await Promise.all([
+  const { data } = await sb
+    .from("packages")
+    .select(`*, brand:brands(id, name), campaigns(id, name, slug),
+      package_items(*, product:products(id, name, product_type),
+        package_item_skus(*, sku:product_skus(id, sku, attributes, status, stock, model:product_models(model_name, model_code))))`)
+    .eq("id", id)
+    .maybeSingle();
+  if (!data) notFound();
+  const p = data as unknown as Pkg;
+
+  const [{ data: cands }, { data: categories }, { data: products }] = await Promise.all([
+    // 같은 브랜드의 제품 전체 (구성품별로 같은 제품종류만 후보로 사용)
     sb
-      .from("packages")
-      .select(`*, brand:brands(id, name), campaigns(id, name, slug),
-        package_items(*, package_item_skus(*),
-          product:products(id, name, product_type, product_models(id, model_code, model_name, status, sort_order, product_skus(id, sku, attributes, status, stock))))`)
-      .eq("id", id)
-      .maybeSingle(),
+      .from("products")
+      .select("id, name, product_type, status, product_models(id, model_code, model_name, status, sort_order, product_skus(id, sku, attributes, status, stock))")
+      .eq("brand_id", p.brand.id)
+      .order("name"),
     sb.from("categories").select("id, name").order("sort_order"),
     sb.from("products").select("id, name, product_type, brand:brands(name)").eq("status", "active").order("product_type"),
   ]);
-  if (!data) notFound();
-  const p = data as unknown as Pkg;
+  const candidates = (cands ?? []) as unknown as CandProduct[];
   const items = [...p.package_items].sort((a, b) => a.sort_order - b.sort_order);
   const productOpts = (products ?? []) as unknown as { id: string; name: string; product_type: string; brand: { name: string } }[];
 
@@ -67,7 +105,7 @@ async function PackageDetail({ params }: Params) {
           <p className="text-sm text-sub">
             {p.brand.name} · 연결된 캠페인 {p.campaigns.length}개
             {p.campaigns.map((c) => (
-              <Link key={c.id} href={`/campaigns/${c.slug}`} target="_blank" className="ml-2 text-navy underline">{c.name}</Link>
+              <Link key={c.id} href={`/admin/campaigns/${c.id}`} className="ml-2 text-navy underline">{c.name}</Link>
             ))}
           </p>
         </div>
@@ -109,11 +147,11 @@ async function PackageDetail({ params }: Params) {
           </label>
           <label className="text-[13px] font-semibold">
             정상가 (원)
-            <input name="list_price" type="number" min={0} step={1000} defaultValue={p.list_price} className={`${input} tabular mt-1 block w-full`} />
+            <input name="list_price" type="number" min={0} step={100} defaultValue={p.list_price} className={`${input} tabular mt-1 block w-full`} />
           </label>
           <label className="text-[13px] font-semibold md:col-span-2">
             구성 요약 (카드에 표시)
-            <input name="summary" defaultValue={p.summary ?? ""} maxLength={200} className={`${input} mt-1 block w-full`} placeholder="OLED TV + 사운드바" />
+            <input name="summary" defaultValue={p.summary ?? ""} maxLength={200} className={`${input} mt-1 block w-full`} />
           </label>
           <label className="text-[13px] font-semibold md:col-span-3">
             대표 이미지 URL
@@ -133,9 +171,15 @@ async function PackageDetail({ params }: Params) {
 
       {/* 구성품 */}
       {items.map((it) => {
-        const allowed = new Map(it.package_item_skus.map((s) => [s.sku_id, s]));
-        const models = [...(it.product?.product_models ?? [])].sort((a, b) => a.sort_order - b.sort_order);
+        const allowedMap = new Map(it.package_item_skus.map((a) => [a.sku_id, a]));
+        const type = it.product?.product_type;
+        const group = candidates
+          .filter((c) => c.product_type === type)
+          .sort((a, b) => Number(b.id === it.product?.id) - Number(a.id === it.product?.id) || a.name.localeCompare(b.name));
+        const candidateSkuIds = new Set(group.flatMap((c) => c.product_models.flatMap((m) => m.product_skus.map((s) => s.id))));
+        const leftovers = it.package_item_skus.filter((a) => a.sku && !candidateSkuIds.has(a.sku_id));
         const noSku = it.package_item_skus.length === 0;
+
         return (
           <section key={it.id} className={`rounded-xl bg-white p-5 ${noSku ? "ring-2 ring-coral/40" : ""}`}>
             <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -143,7 +187,8 @@ async function PackageDetail({ params }: Params) {
               <span className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${it.is_required ? "bg-navy text-white" : "bg-soft text-sub"}`}>
                 {it.is_required ? "필수" : "선택"}
               </span>
-              <span className="text-sm text-sub">{it.product?.name}</span>
+              <span className="text-sm text-sub">기본 제품: {it.product?.name}</span>
+              <span className="text-sm text-sub">· 허용 SKU {it.package_item_skus.length}개</span>
               {noSku && <span className="text-sm font-bold text-coral">허용 SKU가 없어 고객이 선택할 수 없습니다</span>}
             </div>
 
@@ -177,38 +222,48 @@ async function PackageDetail({ params }: Params) {
 
             <ActionForm action={savePackageItemSkus} className="space-y-3">
               <input type="hidden" name="package_item_id" value={it.id} />
-              <p className="text-xs text-sub">고객이 선택할 수 있는 SKU를 체크하고, 기본 SKU 대비 추가금을 입력하세요. 기본 선택은 하나만 지정합니다.</p>
-              {models.map((m) => (
-                <div key={m.id} className="rounded-lg border border-line">
-                  <p className="border-b border-line px-3 py-2 text-sm font-semibold">
-                    {m.model_name} <span className="font-normal text-sub">{m.model_code}</span>
-                    {m.status !== "active" && <span className="ml-2 text-xs text-coral">판매중지 모델</span>}
-                  </p>
-                  {m.product_skus.length === 0 && <p className="px-3 py-2 text-xs text-sub">등록된 SKU가 없습니다. 제품·옵션에서 추가하세요.</p>}
-                  {m.product_skus.map((s) => {
-                    const a = allowed.get(s.id);
-                    return (
-                      <div key={s.id} className="flex flex-wrap items-center gap-3 border-t border-line px-3 py-2 text-sm first:border-t-0">
-                        <label className="flex min-w-60 flex-1 items-center gap-2">
-                          <input type="checkbox" name={`allow:${s.id}`} defaultChecked={!!a} className="h-4 w-4 accent-[#102a43]" />
-                          <span className="font-semibold">{s.sku}</span>
-                          <span className="text-sub">{Object.values(s.attributes).join(" · ")}</span>
-                          <span className="tabular text-xs text-sub">재고 {s.stock}</span>
-                          {s.status !== "active" && <span className="text-xs text-coral">{s.status === "soldout" ? "품절" : "숨김"}</span>}
-                        </label>
-                        <label className="flex items-center gap-1.5 text-xs text-sub">
-                          추가금
-                          <input name={`adj:${s.id}`} type="number" min={0} step={1000} defaultValue={a?.price_adjustment ?? 0} className={`${input} tabular h-9 w-28`} />
-                        </label>
-                        <label className="flex items-center gap-1.5 text-xs">
-                          <input type="radio" name="default_sku" value={s.id} defaultChecked={!!a?.is_default} className="h-4 w-4 accent-[#102a43]" />
-                          기본
-                        </label>
-                      </div>
-                    );
-                  })}
+              <p className="text-xs text-sub">
+                {p.brand.name}의 <b>{type}</b> 제품 SKU를 모두 표시합니다. 고객이 고를 수 있는 SKU를 체크하고, 기본 SKU 대비 추가금을 입력하세요.
+                허용 SKU가 있는 제품은 펼쳐져 있습니다.
+              </p>
+
+              {group.map((c) => {
+                const models = [...c.product_models].sort((a, b) => a.sort_order - b.sort_order);
+                const allowedCount = models.reduce((n, m) => n + m.product_skus.filter((s) => allowedMap.has(s.id)).length, 0);
+                return (
+                  <details key={c.id} open={allowedCount > 0} className="rounded-lg border border-line">
+                    <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 bg-soft/60 px-3 py-2 text-sm">
+                      <b>{c.name}</b>
+                      {c.id === it.product?.id && <span className="rounded bg-navy px-1.5 py-0.5 text-[11px] font-bold text-white">기본 제품</span>}
+                      {c.status !== "active" && <span className="text-xs text-coral">판매중지 제품</span>}
+                      <span className="ml-auto text-xs text-sub">허용 {allowedCount}개</span>
+                    </summary>
+                    {models.map((m) =>
+                      m.product_skus.map((s) => (
+                        <SkuRow
+                          key={s.id}
+                          s={{ ...s, modelLabel: `${m.model_name}${m.status !== "active" ? " (판매중지 모델)" : ""}` }}
+                          allowed={allowedMap.get(s.id)}
+                        />
+                      ))
+                    )}
+                  </details>
+                );
+              })}
+
+              {leftovers.length > 0 && (
+                <div className="rounded-lg border border-coral/40">
+                  <p className="bg-coral/5 px-3 py-2 text-sm font-semibold text-coral">제품종류가 다른 기존 허용 SKU (저장 시 해제됩니다)</p>
+                  {leftovers.map((a) => (
+                    <SkuRow
+                      key={a.sku_id}
+                      s={{ ...a.sku!, modelLabel: a.sku!.model?.model_name }}
+                      allowed={a}
+                    />
+                  ))}
                 </div>
-              ))}
+              )}
+
               <SubmitButton>허용 SKU 저장</SubmitButton>
             </ActionForm>
 
@@ -226,7 +281,7 @@ async function PackageDetail({ params }: Params) {
         <ActionForm action={addPackageItem} className="flex flex-wrap items-end gap-3">
           <input type="hidden" name="package_id" value={p.id} />
           <label className="text-[13px] font-semibold">
-            제품
+            기본 제품
             <select name="product_id" required defaultValue="" className={`${input} mt-1 block w-72`}>
               <option value="" disabled>선택</option>
               {productOpts.map((o) => (
@@ -257,7 +312,7 @@ async function PackageDetail({ params }: Params) {
           <SubmitButton>추가</SubmitButton>
         </ActionForm>
         <p className="mt-3 text-xs text-sub">
-          필수 구성품 금액은 캠페인 공동구매가에 포함됩니다. 선택 구성품 금액은 고객이 추가할 때만 더해집니다. 예: 의류관리기 {won(1290000)}
+          기본 제품의 제품종류와 같은 SKU를 허용 SKU로 지정할 수 있습니다. 선택 구성품 금액 예: {won(837000)}
         </p>
       </section>
     </div>

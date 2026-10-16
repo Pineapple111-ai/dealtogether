@@ -24,14 +24,16 @@ async function CategoryGrid() {
   return (
     <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
       {categories.map((cat) => {
-        const count = campaigns.filter((c) => c.isPurchasable && c.package.category.slug === cat.slug).length;
+        const count = campaigns.filter(
+          (c) => (c.isPurchasable || c.status === "scheduled") && c.package.category.slug === cat.slug
+        ).length;
         return (
           <ImageTile
             key={cat.id}
             href={`/categories/${cat.slug}`}
             image={spaceImage(cat.slug) ?? cat.image_url}
             title={cat.name}
-            meta={`진행 중 ${count}건`}
+            meta={`공동구매 ${count}건`}
           />
         );
       })}

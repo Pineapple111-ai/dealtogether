@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Countdown from "./Countdown";
-import { won } from "@/lib/format";
+import { won, formatDate } from "@/lib/format";
 import { STATUS_LABEL, type CampaignView } from "@/lib/campaign";
 
 const BADGE: Record<string, string> = {
@@ -78,7 +78,7 @@ export default function CampaignCard({ c, serverNow }: { c: CampaignView; server
             잔여 <b className="tabular text-ink">{c.remaining}</b>세트
           </span>
           {c.status === "scheduled" ? (
-            <span className="text-sub">오픈 예정</span>
+            <span className="tabular font-semibold text-navy">{formatDate(c.startAt)} 오픈</span>
           ) : c.isPurchasable ? (
             <span className={c.status === "closing_soon" ? "font-semibold text-coral" : "text-ink"}>
               <Countdown endAt={c.endAt} serverNow={serverNow} />

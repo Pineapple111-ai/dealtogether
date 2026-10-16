@@ -1,10 +1,10 @@
 import Link from "next/link";
 import CampaignCard from "@/components/campaign/CampaignCard";
-import { getCampaigns, getCategories } from "@/lib/queries/campaigns";
-import type { CampaignView } from "@/lib/campaign";
 import ImageTile from "@/components/common/ImageTile";
 import PromoBanner from "@/components/common/PromoBanner";
+import { getCampaigns, getCategories } from "@/lib/queries/campaigns";
 import { IMG, spaceImage } from "@/lib/images";
+import type { CampaignView } from "@/lib/campaign";
 
 function SectionHead({ title, desc, href }: { title: string; desc?: string; href?: string }) {
   return (
@@ -22,10 +22,7 @@ function SectionHead({ title, desc, href }: { title: string; desc?: string; href
   );
 }
 
-function Grid({ items, serverNow, empty }: { items: CampaignView[]; serverNow: number; empty: string }) {
-  if (items.length === 0) {
-    return <p className="rounded-xl bg-soft px-6 py-12 text-center text-sm text-sub">{empty}</p>;
-  }
+function Grid({ items, serverNow }: { items: CampaignView[]; serverNow: number }) {
   return (
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
       {items.map((c) => (
@@ -35,40 +32,42 @@ function Grid({ items, serverNow, empty }: { items: CampaignView[]; serverNow: n
   );
 }
 
+const time = (iso: string) => new Date(iso).getTime();
+
 export default async function LiveSections() {
   const [{ campaigns, serverNow }, categories] = await Promise.all([getCampaigns(), getCategories()]);
   const active = campaigns.filter((c) => c.isPurchasable);
+  const upcoming = campaigns.filter((c) => c.status === "scheduled");
+  const shown = [...active, ...upcoming];
 
   const stats = [
     { label: "진행 중인 공동구매", value: active.length, unit: "건" },
+    { label: "오픈 예정", value: upcoming.length, unit: "건" },
     { label: "확정 참여 인원", value: active.reduce((s, c) => s + c.participants, 0), unit: "명" },
     { label: "마감 임박", value: active.filter((c) => c.status === "closing_soon").length, unit: "건" },
     { label: "목표 달성", value: campaigns.filter((c) => c.participants >= c.targetParticipants).length, unit: "건" },
   ];
 
-  const closingSoon = [...active]
-    .sort((a, b) => new Date(a.endAt).getTime() - new Date(b.endAt).getTime())
-    .slice(0, 4);
-
-  // 실제 판매 기준 인기순 (판매 0건은 제외)
+  const closingSoon = [...active].sort((a, b) => time(a.endAt) - time(b.endAt)).slice(0, 4);
+  const openingSoon = [...upcoming].sort((a, b) => time(a.startAt) - time(b.startAt)).slice(0, 8);
   const popular = [...active]
     .filter((c) => c.sold > 0)
     .sort((a, b) => b.sold - a.sold || b.participants - a.participants)
     .slice(0, 4);
 
-  const brandCount = (slug: string) => active.filter((c) => c.package.brand.slug === slug).length;
+  const brandCount = (slug: string) => shown.filter((c) => c.package.brand.slug === slug).length;
 
   return (
     <>
       {/* 실시간 현황 */}
       <section className="border-b border-line">
-        <dl className="mx-auto grid max-w-site grid-cols-2 px-4 md:grid-cols-4 md:px-6">
+        <dl className="mx-auto grid max-w-site grid-cols-2 px-4 md:grid-cols-5 md:px-6">
           {stats.map((s, i) => (
             <div
               key={s.label}
-              className={`py-6 md:py-8 ${i % 2 === 1 ? "pl-5 border-l border-line" : ""} ${
-                i >= 2 ? "border-t border-line md:border-t-0" : ""
-              } ${i === 2 ? "md:pl-5 md:border-l" : ""}`}
+              className={`border-line py-6 md:py-8 ${i > 0 ? "md:border-l md:pl-5" : ""} ${
+                i % 2 === 1 ? "border-l pl-5" : ""
+              } ${i >= 2 ? "border-t md:border-t-0" : ""} ${i === 4 ? "col-span-2 md:col-span-1" : ""}`}
             >
               <dt className="text-[13px] text-sub">{s.label}</dt>
               <dd className="tabular mt-1 text-2xl font-extrabold text-navy md:text-3xl">
@@ -107,38 +106,59 @@ export default async function LiveSections() {
               <span className="text-sm font-semibold text-white/80">브랜드 기획전</span>
               <div className="flex items-end justify-between">
                 <span className="text-3xl font-extrabold">{b.name}</span>
-                <span className="tabular text-sm text-white/80">진행 중 {brandCount(b.slug)}건</span>
+                <span className="tabular text-sm text-white/80">공동구매 {brandCount(b.slug)}건</span>
               </div>
             </Link>
           ))}
         </div>
       </section>
 
-      {/* 마감 임박 */}
-      <section className="mx-auto max-w-site px-4 pt-16 md:px-6">
-        <SectionHead title="마감 임박 공동구매" desc="종료가 가까운 순서로 보여드려요" href="/closing-soon" />
-        <Grid items={closingSoon} serverNow={serverNow} empty="진행 중인 공동구매가 없습니다." />
-      </section>
+      {/* 마감 임박 (진행 중일 때만) */}
+      {closingSoon.length > 0 && (
+        <section className="mx-auto max-w-site px-4 pt-16 md:px-6">
+          <SectionHead title="마감 임박 공동구매" desc="종료가 가까운 순서로 보여드려요" href="/closing-soon" />
+          <Grid items={closingSoon} serverNow={serverNow} />
+        </section>
+      )}
 
-      {/* 인기 */}
-      <section className="mx-auto max-w-site px-4 pt-16 md:px-6">
-        <SectionHead title="인기 공동구매" desc="실제 판매 수량 기준" href="/campaigns?sort=popular" />
-        <Grid items={popular} serverNow={serverNow} empty="아직 판매 집계가 없습니다. 첫 참여자가 되어보세요." />
-      </section>
+      {/* 오픈 예정 */}
+      {openingSoon.length > 0 && (
+        <section className="mx-auto max-w-site px-4 pt-16 md:px-6">
+          <SectionHead title="오픈 예정 공동구매" desc="곧 시작하는 공동구매를 미리 확인하세요" href="/campaigns?status=scheduled" />
+          <Grid items={openingSoon} serverNow={serverNow} />
+        </section>
+      )}
+
+      {/* 인기 (판매 실적이 있을 때만) */}
+      {popular.length > 0 && (
+        <section className="mx-auto max-w-site px-4 pt-16 md:px-6">
+          <SectionHead title="인기 공동구매" desc="실제 판매 수량 기준" href="/campaigns?sort=popular" />
+          <Grid items={popular} serverNow={serverNow} />
+        </section>
+      )}
+
+      {/* 진행 중·예정 모두 없을 때 */}
+      {shown.length === 0 && (
+        <section className="mx-auto max-w-site px-4 pt-16 md:px-6">
+          <p className="rounded-xl bg-soft px-6 py-12 text-center text-sm text-sub">
+            다음 공동구매를 준비하고 있습니다. 가전 쇼핑에서 원하는 제품을 골라보세요.
+          </p>
+        </section>
+      )}
 
       {/* 공간별 패키지 */}
       <section className="mx-auto max-w-site px-4 pt-16 md:px-6">
         <SectionHead title="공간별 패키지" />
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
           {categories.map((cat) => {
-            const count = active.filter((c) => c.package.category.slug === cat.slug).length;
+            const count = shown.filter((c) => c.package.category.slug === cat.slug).length;
             return (
               <ImageTile
                 key={cat.id}
                 href={`/categories/${cat.slug}`}
                 image={spaceImage(cat.slug) ?? cat.image_url}
                 title={cat.name}
-                meta={`진행 중 ${count}건`}
+                meta={`공동구매 ${count}건`}
               />
             );
           })}

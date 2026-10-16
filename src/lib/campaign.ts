@@ -10,7 +10,7 @@ export type CampaignStatus =
   | "cancelled";
 
 export const STATUS_LABEL: Record<CampaignStatus, string> = {
-  scheduled: "진행 예정",
+  scheduled: "오픈 예정",
   open: "모집 중",
   closing_soon: "마감 임박",
   target_reached: "목표 달성",

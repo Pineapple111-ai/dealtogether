@@ -188,7 +188,9 @@ export async function getCampaignDetail(slug: string, client?: SupabaseClient): 
   });
 
   const serverNow = Date.now();
-  const images = [row.package.thumbnail_url, ...(row.package.images ?? [])].filter(
+  // 상세 갤러리: 추가 이미지(1:1)가 있으면 그것만, 없으면 대표 이미지(카드용)
+  const extra = (row.package.images ?? []).filter(Boolean);
+  const images = (extra.length ? extra : [row.package.thumbnail_url]).filter(
     (x, i, arr): x is string => !!x && arr.indexOf(x) === i
   );
 

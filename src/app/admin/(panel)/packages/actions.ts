@@ -30,6 +30,7 @@ async function log(adminId: string, action: string, targetId: string, detail: Re
 function parseImages(raw: string) {
   const urls = raw.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
   for (const u of urls) {
+    if (/^\/images\/[\w\-/.]+$/.test(u)) continue; // 사이트 내부 이미지
     try {
       if (new URL(u).protocol !== "https:") return null;
     } catch {

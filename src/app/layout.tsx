@@ -5,18 +5,31 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import FooterGate from "@/components/layout/FooterGate";
 import CompareBar from "@/components/compare/CompareBar";
+import { SITE_URL } from "@/lib/site";
+
+const googleCode = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION;
+const naverCode = process.env.NEXT_PUBLIC_NAVER_SITE_VERIFICATION;
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "딜투게더 | 프리미엄 가전 공동구매",
     template: "%s | 딜투게더",
   },
-  description: "좋은 가전, 더 좋은 가격. 삼성·LG 가전 패키지 공동구매 딜투게더.",
+  description: "좋은 가전, 더 좋은 가격. 삼성·LG 가전 패키지 공동구매와 골라담기 세트 할인, 딜투게더.",
+  alternates: { canonical: "/" },
   openGraph: {
     title: "딜투게더 | 프리미엄 가전 공동구매",
     description: "좋은 가전, 더 좋은 가격. 함께하는 딜투게더.",
+    url: SITE_URL,
+    siteName: "딜투게더",
     locale: "ko_KR",
     type: "website",
+    images: [{ url: "/images/hero-main.jpg", width: 1920, height: 720, alt: "딜투게더" }],
+  },
+  verification: {
+    google: googleCode || undefined,
+    other: naverCode ? { "naver-site-verification": naverCode } : undefined,
   },
 };
 

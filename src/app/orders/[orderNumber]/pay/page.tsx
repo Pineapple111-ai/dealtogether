@@ -156,6 +156,41 @@ async function PayView({ params, searchParams }: Props) {
         )}
       </section>
 
+      {(() => {
+        const sh = Array.isArray(order.shipments) ? order.shipments[0] : order.shipments;
+        if (!sh) return null;
+        const rows: [string, string | null][] = [
+          ["배송업체", sh.carrier],
+          ["운송장번호", sh.tracking_number],
+          ["배송 예정일", sh.delivery_date],
+          ["설치업체", sh.installer],
+          ["설치 담당자", sh.technician],
+          ["담당자 연락처", sh.technician_phone],
+          ["설치 예정", sh.install_at ? formatDate(sh.install_at) : null],
+          ["설치 완료", sh.installed_at ? formatDate(sh.installed_at) : null],
+        ];
+        const shown = rows.filter(([, v]) => !!v);
+        if (shown.length === 0 && !sh.customer_note) return null;
+        return (
+          <section className="mt-6 rounded-xl border border-line p-5">
+            <h2 className="text-lg font-bold">배송·설치 안내</h2>
+            {shown.length > 0 && (
+              <dl className="tabular mt-3 grid grid-cols-[110px_1fr] gap-y-2 text-sm">
+                {shown.map(([k, v]) => (
+                  <div key={k} className="contents">
+                    <dt className="text-sub">{k}</dt>
+                    <dd className="font-semibold">
+                      {k === "담당자 연락처" ? <a href={`tel:${v}`} className="text-navy underline">{v}</a> : v}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+            {sh.customer_note && <p className="mt-3 whitespace-pre-line rounded-lg bg-soft p-3 text-sm">{sh.customer_note}</p>}
+          </section>
+        );
+      })()}
+
       {awaiting && (
         <section className="mt-6 space-y-4">
           <div className="rounded-xl bg-soft p-5 text-sm leading-relaxed text-ink/80">

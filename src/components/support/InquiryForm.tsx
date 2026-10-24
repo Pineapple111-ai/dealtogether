@@ -85,7 +85,7 @@ export default function InquiryForm({ campaignSlug, campaignName }: { campaignSl
           className={`${input} tabular uppercase`}
           value={f.orderNumber}
           onChange={(e) => set("orderNumber", e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 18))}
-          placeholder="DT-20261012-000001"
+          placeholder="261102-482"
         />
       </label>
       <label className="block">

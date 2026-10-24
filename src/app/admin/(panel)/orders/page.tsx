@@ -67,7 +67,7 @@ async function OrdersTable({ searchParams }: { searchParams: SP }) {
 
   if (keyword) {
     const safe = keyword.replace(/[%_,()]/g, "");
-    if (/^DT-/i.test(safe)) query = query.ilike("order_number", `%${safe.toUpperCase()}%`);
+    if (/^(DT-|\d{6}-)/i.test(safe)) query = query.ilike("order_number", `%${safe.toUpperCase()}%`);
     else if (/^[0-9-]+$/.test(safe)) query = query.ilike("buyer_phone", `%${safe}%`);
     else query = query.ilike("buyer_name", `%${safe}%`);
   }

@@ -43,6 +43,13 @@ export type OrderRow = {
   expires_at: string;
   created_at: string;
   order_items: OrderItemRow[];
+  shipments: ShipmentRow | ShipmentRow[] | null;
+};
+
+export type ShipmentRow = {
+  carrier: string | null; tracking_number: string | null; delivery_date: string | null;
+  installer: string | null; technician: string | null; technician_phone: string | null;
+  install_at: string | null; installed_at: string | null; customer_note: string | null;
 };
 
 /**
@@ -51,12 +58,12 @@ export type OrderRow = {
  * - 회원: 로그인 계정이 주문자
  */
 export async function findAccessibleOrder(orderNumber: string, token: string | null) {
-  if (!/^DT-\d{8}-\d{6}$/.test(orderNumber)) return null;
+  if (!/^(\d{6}-\d{3}|DT-\d{8}-\d{6})$/.test(orderNumber)) return null;
 
   const admin = createAdminClient();
   const { data } = await admin
     .from("orders")
-    .select("*, order_items(*)")
+    .select("*, order_items(*), shipments(carrier, tracking_number, delivery_date, installer, technician, technician_phone, install_at, installed_at, customer_note)")
     .eq("order_number", orderNumber)
     .maybeSingle();
   if (!data) return null;

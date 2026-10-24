@@ -8,6 +8,10 @@ import { ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL } from "@/lib/order-status";
 import { won, formatDate } from "@/lib/format";
 import ConfirmPaymentForm from "@/components/admin/ConfirmPaymentForm";
 import OrderStatusActions from "@/components/admin/OrderStatusActions";
+import PhoneField from "@/components/admin/PhoneField";
+import { toKstInput } from "@/lib/admin/datetime";
+import { saveShipment } from "../actions";
+import ActionForm, { SubmitButton } from "@/components/admin/ActionForm";
 
 type Params = { params: Promise<{ orderNumber: string }> };
 
@@ -83,6 +87,14 @@ type Detail = {
     reason: string | null;
     created_at: string;
   }[];
+  shipments: Shipment | Shipment[] | null;
+};
+
+type Shipment = {
+  carrier: string | null; tracking_number: string | null; delivery_date: string | null;
+  installer: string | null; technician: string | null; technician_phone: string | null;
+  install_at: string | null; installed_at: string | null; customer_note: string | null; admin_memo: string | null;
+  updated_at: string;
 };
 
 const ELEVATOR: Record<string, string> = { yes: "있음", no: "없음", unknown: "잘 모름" };
@@ -126,7 +138,7 @@ async function OrderDetail({ params }: Params) {
   const db = createAdminClient();
   const { data } = await db
     .from("orders")
-    .select("*, order_items(*), payment_records(*), order_status_history(*)")
+    .select("*, order_items(*), payment_records(*), order_status_history(*), shipments(*)")
     .eq("order_number", orderNumber)
     .maybeSingle();
   if (!data) notFound();
@@ -336,6 +348,65 @@ async function OrderDetail({ params }: Params) {
               />
             </Card>
           )}
+
+          {["paid", "preparing", "shipping", "delivered", "installation_scheduled", "completed"].includes(o.status) && (() => {
+            const sh = Array.isArray(o.shipments) ? o.shipments[0] : o.shipments;
+            const fi = "h-10 w-full rounded-lg border border-line px-3 text-sm outline-none focus:border-navy";
+            return (
+              <Card title="배송·설치">
+                <ActionForm action={saveShipment} className="grid grid-cols-2 gap-3">
+                  <input type="hidden" name="order_id" value={o.id} />
+                  <label className="text-[13px] font-semibold">
+                    배송업체
+                    <input name="carrier" list="carriers" defaultValue={sh?.carrier ?? ""} className={`${fi} mt-1`} />
+                    <datalist id="carriers">
+                      {["CJ대한통운", "롯데택배", "한진택배", "우체국택배", "로젠택배", "경동택배", "설치기사 직접 배송"].map((c) => <option key={c} value={c} />)}
+                    </datalist>
+                  </label>
+                  <label className="text-[13px] font-semibold">
+                    운송장번호
+                    <input name="tracking_number" defaultValue={sh?.tracking_number ?? ""} className={`${fi} mt-1`} />
+                  </label>
+                  <label className="text-[13px] font-semibold">
+                    배송 예정일
+                    <input name="delivery_date" type="date" defaultValue={sh?.delivery_date ?? ""} className={`${fi} mt-1`} />
+                  </label>
+                  <label className="text-[13px] font-semibold">
+                    설치업체
+                    <input name="installer" defaultValue={sh?.installer ?? ""} className={`${fi} mt-1`} />
+                  </label>
+                  <label className="text-[13px] font-semibold">
+                    설치 담당자
+                    <input name="technician" defaultValue={sh?.technician ?? ""} className={`${fi} mt-1`} />
+                  </label>
+                  <label className="text-[13px] font-semibold">
+                    담당자 연락처
+                    <PhoneField name="technician_phone" defaultValue={sh?.technician_phone ?? ""} className={`${fi} mt-1`} />
+                  </label>
+                  <label className="text-[13px] font-semibold">
+                    설치 예정 일시
+                    <input name="install_at" type="datetime-local" defaultValue={sh?.install_at ? toKstInput(sh.install_at) : ""} className={`${fi} mt-1`} />
+                  </label>
+                  <label className="text-[13px] font-semibold">
+                    설치 완료 일시
+                    <input name="installed_at" type="datetime-local" defaultValue={sh?.installed_at ? toKstInput(sh.installed_at) : ""} className={`${fi} mt-1`} />
+                  </label>
+                  <label className="col-span-2 text-[13px] font-semibold">
+                    고객 안내 문구 <span className="font-normal text-sub">(고객 주문 화면에 표시)</span>
+                    <textarea name="customer_note" defaultValue={sh?.customer_note ?? ""} maxLength={500} className={`${fi} mt-1 h-20 py-2`} placeholder="예: 설치 전날 기사님이 연락드립니다." />
+                  </label>
+                  <label className="col-span-2 text-[13px] font-semibold">
+                    내부 메모 <span className="font-normal text-sub">(고객 비공개)</span>
+                    <textarea name="admin_memo" defaultValue={sh?.admin_memo ?? ""} maxLength={1000} className={`${fi} mt-1 h-16 py-2`} />
+                  </label>
+                  <div className="col-span-2">
+                    <SubmitButton>저장</SubmitButton>
+                    {sh?.updated_at && <span className="tabular ml-3 text-xs text-sub">최종 수정 {formatDate(sh.updated_at)}</span>}
+                  </div>
+                </ActionForm>
+              </Card>
+            );
+          })()}
 
           <Card title="주문 상태 변경">
             <OrderStatusActions orderNumber={o.order_number} status={o.status} canEdit={canEdit} />

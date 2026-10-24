@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { phoneSchema } from "@/lib/phone";
 
 const schema = z.object({
-  orderNumber: z.string().trim().toUpperCase().regex(/^DT-\d{8}-\d{6}$/, "주문번호 형식을 확인해주세요."),
+  orderNumber: z.string().trim().toUpperCase().regex(/^(\d{6}-\d{3}|DT-\d{8}-\d{6})$/, "주문번호 형식을 확인해주세요."),
   phone: phoneSchema,
 });
 

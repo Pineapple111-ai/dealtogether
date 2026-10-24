@@ -12,7 +12,7 @@ const schema = z.object({
   email: z.union([z.string().trim().email("이메일 형식을 확인해주세요.").max(100), z.literal("")]),
   category: z.enum(INQUIRY_CATEGORIES, { message: "문의 유형을 선택해주세요." }),
   campaignSlug: z.string().max(100).optional().default(""),
-  orderNumber: z.union([z.string().trim().toUpperCase().regex(/^DT-\d{8}-\d{6}$/, "주문번호 형식을 확인해주세요."), z.literal("")]),
+  orderNumber: z.union([z.string().trim().toUpperCase().regex(/^(\d{6}-\d{3}|DT-\d{8}-\d{6})$/, "주문번호 형식을 확인해주세요."), z.literal("")]),
   content: z.string().trim().min(10, "문의 내용을 10자 이상 입력해주세요.").max(3000),
   agreePrivacy: z.literal(true, { message: "개인정보 수집·이용에 동의해주세요." }),
 });

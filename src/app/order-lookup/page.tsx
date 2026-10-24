@@ -43,7 +43,7 @@ export default function OrderLookupPage() {
             className={`${input} tabular uppercase`}
             value={orderNumber}
             onChange={(e) => setOrderNumber(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 18))}
-            placeholder="DT-20261012-000001"
+            placeholder="261102-482"
             required
           />
         </label>

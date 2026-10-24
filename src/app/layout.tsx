@@ -4,6 +4,7 @@ import "./globals.css";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import FooterGate from "@/components/layout/FooterGate";
+import CompareBar from "@/components/compare/CompareBar";
 
 export const metadata: Metadata = {
   title: {
@@ -37,6 +38,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <FooterGate>
             <Footer />
           </FooterGate>
+        </Suspense>
+        <Suspense fallback={null}>
+          <CompareBar />
         </Suspense>
       </body>
     </html>

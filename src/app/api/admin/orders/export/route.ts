@@ -63,7 +63,7 @@ export async function GET(req: Request) {
   if (from) query = query.gte("created_at", from);
   if (to) query = query.lt("created_at", to);
   if (q) {
-    if (/^DT-/i.test(q)) query = query.ilike("order_number", `%${q.toUpperCase()}%`);
+    if (/^(DT-|\d{6}-)/i.test(q)) query = query.ilike("order_number", `%${q.toUpperCase()}%`);
     else if (/^[0-9-]+$/.test(q)) query = query.ilike("buyer_phone", `%${q}%`);
     else query = query.ilike("buyer_name", `%${q}%`);
   }

@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Receipt, Megaphone, Package, Boxes, Users, Headphones, FileText, Settings, LogOut, Percent, FileSpreadsheet, Image as ImageIcon } from "lucide-react";
+import { LayoutDashboard, Receipt, Megaphone, Package, Boxes, Users, Headphones, FileText, Settings, LogOut,   Percent, FileSpreadsheet, Image as ImageIcon, BarChart3 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 const MENU = [
   { href: "/admin", label: "대시보드", icon: LayoutDashboard, area: "dashboard", ready: true },
+  { href: "/admin/visitors", label: "방문 통계", icon: BarChart3, area: "dashboard", ready: true },
   { href: "/admin/orders", label: "주문·결제", icon: Receipt, area: "orders", ready: true },
   { href: "/admin/campaigns", label: "공동구매 캠페인", icon: Megaphone, area: "campaigns", ready: true },
   { href: "/admin/packages", label: "패키지", icon: Package, area: "products", ready: true },

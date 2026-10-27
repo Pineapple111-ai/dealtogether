@@ -24,3 +24,22 @@ const STORE: Record<string, string> = {
 
 export const spaceImage = (slug: string) => SPACE[slug] ?? null;
 export const storeCategoryImage = (key: string) => STORE[key] ?? null;
+
+/** Next.js 이미지 최적화가 가능한 주소인지 (사이트 내부 이미지, Supabase 저장소) */
+const SUPABASE_HOST = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").hostname;
+  } catch {
+    return "";
+  }
+})();
+
+export function canOptimize(src: string) {
+  if (src.startsWith("/")) return true;
+  try {
+    const u = new URL(src);
+    return u.protocol === "https:" && u.hostname === SUPABASE_HOST && u.pathname.startsWith("/storage/v1/object/public/");
+  } catch {
+    return false;
+  }
+}

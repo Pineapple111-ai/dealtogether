@@ -3,6 +3,8 @@ import CompareButton from "@/components/compare/CompareButton";
 import { won } from "@/lib/format";
 import { STORE_CATEGORY_LABEL } from "@/lib/store";
 import type { StoreProduct } from "@/lib/queries/store";
+import Image from "next/image";
+import { canOptimize } from "@/lib/images";
 
 export default function StoreProductCard({ p }: { p: StoreProduct }) {
   const multiPrice = new Set(p.skus.map((s) => s.salePrice)).size > 1;
@@ -14,8 +16,14 @@ export default function StoreProductCard({ p }: { p: StoreProduct }) {
       >
         <div className="relative aspect-square bg-soft">
           {p.thumbnail ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={p.thumbnail} alt={p.name} className="h-full w-full object-cover" />
+            <Image
+              src={p.thumbnail}
+              alt={p.name}
+              fill
+              sizes="(min-width: 1024px) 300px, (min-width: 768px) 33vw, 50vw"
+              className="object-cover"
+              unoptimized={!canOptimize(p.thumbnail)}
+            />
           ) : (
             <div className="flex h-full items-end p-5">
               <span className="text-sm font-semibold" style={{ color: p.brand.theme_color ?? "#102a43" }}>

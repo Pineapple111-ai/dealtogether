@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { HeroBanner } from "@/lib/queries/banners";
+import { getImageProps } from "next/image";
+import { canOptimize } from "@/lib/images";
 
 export default function HeroSlider({ banners }: { banners: HeroBanner[] }) {
   const [index, setIndex] = useState(0);
@@ -43,17 +45,26 @@ export default function HeroSlider({ banners }: { banners: HeroBanner[] }) {
               aria-roledescription="slide"
               aria-label={`${i + 1} / ${n}`}
             >
-              <picture className="absolute inset-0">
-                {b.image_mobile && <source media="(max-width: 767px)" srcSet={b.image_mobile} />}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={b.image_pc}
-                  alt=""
-                  className="h-full w-full object-cover"
-                  loading={i === 0 ? "eager" : "lazy"}
-                  fetchPriority={i === 0 ? "high" : "auto"}
-                />
-              </picture>
+              {(() => {
+                const mobileSrc = b.image_mobile ?? b.image_pc;
+                const opt = canOptimize(b.image_pc) && canOptimize(mobileSrc);
+                const pc = getImageProps({ alt: "", src: b.image_pc, width: 1920, height: 720, sizes: "100vw", unoptimized: !opt }).props;
+                const { srcSet: mobileSet, ...img } = getImageProps({ alt: "", src: mobileSrc, width: 900, height: 1100, sizes: "100vw", unoptimized: !opt }).props;
+                return (
+                  <picture className="absolute inset-0">
+                    <source media="(min-width: 768px)" srcSet={pc.srcSet ?? b.image_pc} sizes="100vw" />
+                    <source media="(max-width: 767px)" srcSet={mobileSet ?? mobileSrc} sizes="100vw" />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      {...img}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      loading={i === 0 ? "eager" : "lazy"}
+                      fetchPriority={i === 0 ? "high" : "auto"}
+                    />
+                  </picture>
+                );
+              })()}
               <div className="absolute inset-0 bg-gradient-to-r from-navy/95 via-navy/75 to-navy/30 md:from-navy/90 md:via-navy/55 md:to-transparent" />
 
               <div className="relative mx-auto flex h-full max-w-site flex-col justify-center px-4 py-16 md:px-6">

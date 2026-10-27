@@ -6,6 +6,7 @@ import Footer from "@/components/layout/Footer";
 import FooterGate from "@/components/layout/FooterGate";
 import CompareBar from "@/components/compare/CompareBar";
 import { SITE_URL } from "@/lib/site";
+import Analytics from "@/components/layout/Analytics";
 
 const googleCode = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION;
 const naverCode = process.env.NEXT_PUBLIC_NAVER_SITE_VERIFICATION;
@@ -54,6 +55,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Suspense>
         <Suspense fallback={null}>
           <CompareBar />
+        </Suspense>
+        <Suspense fallback={null}>
+          <Analytics />
         </Suspense>
       </body>
     </html>

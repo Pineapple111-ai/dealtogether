@@ -1,8 +1,10 @@
 import Link from "next/link";
 import Countdown from "./Countdown";
 import CompareButton from "@/components/compare/CompareButton";
-import { won, formatDate } from "@/lib/format";
+import { won } from "@/lib/format";
 import { STATUS_LABEL, type CampaignView } from "@/lib/campaign";
+import Image from "next/image";
+import { canOptimize } from "@/lib/images";
 
 const BADGE: Record<string, string> = {
   closing_soon: "bg-coral text-white",
@@ -12,6 +14,16 @@ const BADGE: Record<string, string> = {
   closed: "bg-soft text-sub",
   sold_out: "bg-soft text-sub",
   cancelled: "bg-soft text-sub",
+};
+
+/** 카드용 짧은 일시: 11.02 10:00 (한국시간) */
+const shortDate = (iso: string) => {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("ko-KR", {
+      timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false,
+    }).formatToParts(new Date(iso)).map((x) => [x.type, x.value])
+  );
+  return `${p.month}.${p.day} ${p.hour}:${p.minute}`;
 };
 
 export default function CampaignCard({ c, serverNow }: { c: CampaignView; serverNow: number }) {
@@ -28,8 +40,14 @@ export default function CampaignCard({ c, serverNow }: { c: CampaignView; server
       >
         <div className="relative aspect-[4/3] bg-soft">
           {c.package.thumbnail_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={c.package.thumbnail_url} alt={c.package.name} className="h-full w-full object-cover" />
+            <Image
+              src={c.package.thumbnail_url}
+              alt={c.package.name}
+              fill
+              sizes="(min-width: 1024px) 300px, (min-width: 640px) 50vw, 100vw"
+              className="object-cover"
+              unoptimized={!canOptimize(c.package.thumbnail_url)}
+            />
           ) : (
             <div className="flex h-full items-end p-5">
               <span className="text-sm font-semibold" style={{ color: brandColor }}>
@@ -71,11 +89,11 @@ export default function CampaignCard({ c, serverNow }: { c: CampaignView; server
           </div>
 
           <div className="mt-4 flex items-center justify-between border-t border-line pt-3 text-[13px]">
-            <span className="text-sub">
+            <span className="whitespace-nowrap text-sub">
               잔여 <b className="tabular text-ink">{c.remaining}</b>세트
             </span>
             {c.status === "scheduled" ? (
-              <span className="tabular font-semibold text-navy">{formatDate(c.startAt)} 오픈</span>
+              <span className="tabular whitespace-nowrap font-semibold text-navy">{shortDate(c.startAt)} 오픈</span>
             ) : c.isPurchasable ? (
               <span className={c.status === "closing_soon" ? "font-semibold text-coral" : "text-ink"}>
                 <Countdown endAt={c.endAt} serverNow={serverNow} />

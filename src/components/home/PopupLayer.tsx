@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { HomePopup } from "@/lib/queries/banners";
+import Image from "next/image";
+import { canOptimize } from "@/lib/images";
 
 const todayKst = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
 const keyOf = (id: string) => `dt_popup_hide:${id}`;
@@ -47,8 +49,15 @@ export default function PopupLayer({ popups }: { popups: HomePopup[] }) {
   if (!current) return null;
 
   const image = current.image_url && (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={current.image_url} alt={current.title} className="block max-h-[60vh] w-full object-cover" />
+    <Image
+      src={current.image_url}
+      alt={current.title}
+      width={800}
+      height={1000}
+      sizes="384px"
+      className="block h-auto max-h-[60vh] w-full object-cover"
+      unoptimized={!canOptimize(current.image_url)}
+    />
   );
 
   return (

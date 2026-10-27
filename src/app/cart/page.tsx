@@ -8,6 +8,8 @@ import { useCart, updateCartQty, removeFromCart, MAX_QTY } from "@/lib/cart";
 import { won } from "@/lib/format";
 import { STORE_CATEGORY_LABEL } from "@/lib/store";
 import type { StoreQuote } from "@/lib/store-pricing";
+import Image from "next/image";
+import { canOptimize } from "@/lib/images";
 
 export default function CartPage() {
   const router = useRouter();
@@ -78,8 +80,7 @@ export default function CartPage() {
               <li key={it.id} className={`flex gap-4 rounded-xl border p-4 ${l?.error ? "border-coral/50 bg-coral/5" : "border-line"}`}>
                 <Link href={`/store/${it.productId}`} className="h-24 w-24 shrink-0 overflow-hidden rounded-lg bg-soft">
                   {l?.thumbnail && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={l.thumbnail} alt="" className="h-full w-full object-cover" />
+                    <Image src={l.thumbnail} alt="" width={96} height={96} sizes="96px" className="h-full w-full object-cover" unoptimized={!canOptimize(l.thumbnail)} />
                   )}
                 </Link>
                 <div className="min-w-0 flex-1">

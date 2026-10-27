@@ -6,6 +6,8 @@ import { STORE_CATEGORY_LABEL } from "@/lib/store";
 import { won } from "@/lib/format";
 import CompareTable from "@/components/compare/CompareTable";
 import RemoveCompareButton from "@/components/compare/RemoveCompareButton";
+import Image from "next/image";
+import { canOptimize } from "@/lib/images";
 
 export const metadata: Metadata = { title: "상품 비교", robots: { index: false } };
 
@@ -58,8 +60,7 @@ async function View({ searchParams }: Props) {
             <div>
               <div className="relative aspect-square overflow-hidden rounded-lg bg-soft">
                 {p.thumbnail && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.thumbnail} alt="" className="h-full w-full object-cover" />
+                  <Image src={p.thumbnail} alt="" fill sizes="(min-width: 768px) 360px, 45vw" className="object-cover" unoptimized={!canOptimize(p.thumbnail)} />
                 )}
               </div>
               <p className="mt-2 text-xs font-bold" style={{ color: p.brand.theme_color ?? "#102a43" }}>{p.brand.name}</p>

@@ -7,6 +7,8 @@ import { won, formatDate } from "@/lib/format";
 import type { CampaignDetail } from "@/lib/pricing";
 import CompareTable from "@/components/compare/CompareTable";
 import RemoveCompareButton from "@/components/compare/RemoveCompareButton";
+import Image from "next/image";
+import { canOptimize } from "@/lib/images";
 
 export const metadata: Metadata = { title: "공동구매 비교", robots: { index: false } };
 
@@ -53,8 +55,7 @@ async function View({ searchParams }: Props) {
               <div>
                 <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-soft">
                   {c.package.thumbnail_url && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={c.package.thumbnail_url} alt="" className="h-full w-full object-cover" />
+                    <Image src={c.package.thumbnail_url} alt="" fill sizes="(min-width: 768px) 360px, 45vw" className="object-cover" unoptimized={!canOptimize(c.package.thumbnail_url)} />
                   )}
                 </div>
                 <p className="mt-2 text-xs font-bold" style={{ color: c.package.brand.theme_color ?? "#102a43" }}>{c.package.brand.name}</p>

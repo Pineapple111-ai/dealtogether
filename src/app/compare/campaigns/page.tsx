@@ -7,8 +7,6 @@ import { won, formatDate } from "@/lib/format";
 import type { CampaignDetail } from "@/lib/pricing";
 import CompareTable from "@/components/compare/CompareTable";
 import RemoveCompareButton from "@/components/compare/RemoveCompareButton";
-import Image from "next/image";
-import { canOptimize } from "@/lib/images";
 
 export const metadata: Metadata = { title: "공동구매 비교", robots: { index: false } };
 
@@ -47,27 +45,16 @@ async function View({ searchParams }: Props) {
   return (
     <div className="mt-6 space-y-4">
       <CompareTable
-        columns={list.map((d) => {
-          const c = d.campaign;
-          return {
-            key: c.slug,
-            header: (
-              <div>
-                <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-soft">
-                  {c.package.thumbnail_url && (
-                    <Image src={c.package.thumbnail_url} alt="" fill sizes="(min-width: 768px) 360px, 45vw" className="object-cover" unoptimized={!canOptimize(c.package.thumbnail_url)} />
-                  )}
-                </div>
-                <p className="mt-2 text-xs font-bold" style={{ color: c.package.brand.theme_color ?? "#102a43" }}>{c.package.brand.name}</p>
-                <p className="mt-0.5 font-bold leading-snug">{c.package.name}</p>
-                <div className="mt-2 flex items-center justify-between">
-                  <Link href={`/campaigns/${c.slug}`} className="text-xs font-bold text-navy underline">상세보기</Link>
-                  <RemoveCompareButton kind="campaign" id={c.slug} ids={keys} basePath="/compare/campaigns" />
-                </div>
-              </div>
-            ),
-          };
-        })}
+        columns={list.map((d) => ({
+          key: d.campaign.slug,
+          image: d.campaign.package.thumbnail_url,
+          imageRatio: "4/3" as const,
+          brand: d.campaign.package.brand.name,
+          brandColor: d.campaign.package.brand.theme_color ?? "#102a43",
+          name: d.campaign.package.name,
+          href: `/campaigns/${d.campaign.slug}`,
+          remove: <RemoveCompareButton kind="campaign" id={d.campaign.slug} ids={keys} basePath="/compare/campaigns" />,
+        }))}
         rows={[
           { label: "상태", cells: list.map((d) => STATUS_LABEL[d.campaign.status]) },
           { label: "공간", cells: list.map((d) => d.campaign.package.category.name) },

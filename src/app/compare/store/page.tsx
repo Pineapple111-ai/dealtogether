@@ -6,8 +6,6 @@ import { STORE_CATEGORY_LABEL } from "@/lib/store";
 import { won } from "@/lib/format";
 import CompareTable from "@/components/compare/CompareTable";
 import RemoveCompareButton from "@/components/compare/RemoveCompareButton";
-import Image from "next/image";
-import { canOptimize } from "@/lib/images";
 
 export const metadata: Metadata = { title: "상품 비교", robots: { index: false } };
 
@@ -56,21 +54,13 @@ async function View({ searchParams }: Props) {
       <CompareTable
         columns={list.map((p) => ({
           key: p.id,
-          header: (
-            <div>
-              <div className="relative aspect-square overflow-hidden rounded-lg bg-soft">
-                {p.thumbnail && (
-                  <Image src={p.thumbnail} alt="" fill sizes="(min-width: 768px) 360px, 45vw" className="object-cover" unoptimized={!canOptimize(p.thumbnail)} />
-                )}
-              </div>
-              <p className="mt-2 text-xs font-bold" style={{ color: p.brand.theme_color ?? "#102a43" }}>{p.brand.name}</p>
-              <p className="mt-0.5 font-bold leading-snug">{p.name}</p>
-              <div className="mt-2 flex items-center justify-between">
-                <Link href={`/store/${p.id}`} className="text-xs font-bold text-navy underline">상세보기</Link>
-                <RemoveCompareButton kind="store" id={p.id} ids={keys} basePath="/compare/store" />
-              </div>
-            </div>
-          ),
+          image: p.thumbnail,
+          imageRatio: "1/1" as const,
+          brand: p.brand.name,
+          brandColor: p.brand.theme_color ?? "#102a43",
+          name: p.name,
+          href: `/store/${p.id}`,
+          remove: <RemoveCompareButton kind="store" id={p.id} ids={keys} basePath="/compare/store" />,
         }))}
         rows={[
           { label: "분류 · 종류", cells: list.map((p) => `${STORE_CATEGORY_LABEL[p.category] ?? "-"} · ${p.productType}`) },

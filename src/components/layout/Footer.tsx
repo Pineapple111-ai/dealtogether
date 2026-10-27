@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
+import Image from "next/image";
 
 type BizInfo = {
   site_name: string;
@@ -45,7 +46,7 @@ export default async function Footer() {
       <div className="mx-auto max-w-site px-4 py-12 md:px-6">
         <div className="flex flex-col gap-10 md:flex-row md:justify-between">
           <div className="max-w-xl">
-            <p className="text-lg font-extrabold text-navy">딜투게더</p>
+<Image src="/images/logo.png" alt="딜투게더" width={334} height={80} className="h-8 w-auto" />
             <p className="mt-1 text-sm text-sub">좋은 가전, 더 좋은 가격. 함께하는 딜투게더.</p>
 
             <nav className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-[13px]" aria-label="약관 및 정책">

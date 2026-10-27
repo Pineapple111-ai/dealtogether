@@ -26,7 +26,6 @@ export const metadata: Metadata = {
     siteName: "딜투게더",
     locale: "ko_KR",
     type: "website",
-    images: [{ url: "/images/hero-main.jpg", width: 1920, height: 720, alt: "딜투게더" }],
   },
   verification: {
     google: googleCode || undefined,

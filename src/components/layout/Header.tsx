@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Search, Menu, X, User, ShoppingCart } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useCart } from "@/lib/cart";
+import Image from "next/image";
 
 const NAV = [
   { href: "/campaigns", label: "전체 공동구매" },
@@ -72,8 +73,8 @@ export default function Header() {
       </div>
 
       <div className="mx-auto flex h-16 max-w-site items-center gap-8 px-4 md:h-[72px] md:px-6">
-        <Link href="/" className="shrink-0 text-[22px] font-extrabold tracking-[-0.04em] text-navy">
-          딜투게더
+        <Link href="/" className="shrink-0" aria-label="딜투게더 홈">
+          <Image src="/images/logo.png" alt="딜투게더" width={334} height={80} loading="eager" className="h-8 w-auto md:h-9" />
         </Link>
 
         <nav className="hidden items-center gap-7 lg:flex" aria-label="주요 메뉴">
@@ -125,7 +126,7 @@ export default function Header() {
           <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-0 flex h-full w-[86%] max-w-sm flex-col bg-white">
             <div className="flex h-16 items-center justify-between border-b border-line px-5">
-              <span className="text-lg font-extrabold text-navy">딜투게더</span>
+              <Image src="/images/logo.png" alt="딜투게더" width={334} height={80} className="h-7 w-auto" />
               <button type="button" aria-label="메뉴 닫기" onClick={() => setOpen(false)} className="grid h-10 w-10 place-items-center">
                 <X size={22} />
               </button>

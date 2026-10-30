@@ -18,7 +18,6 @@ export const metadata: Metadata = {
     template: "%s | 딜투게더",
   },
   description: "좋은 가전, 더 좋은 가격. 삼성·LG 가전 패키지 공동구매와 골라담기 세트 할인, 딜투게더.",
-  alternates: { canonical: "/" },
   openGraph: {
     title: "딜투게더 | 프리미엄 가전 공동구매",
     description: "좋은 가전, 더 좋은 가격. 함께하는 딜투게더.",

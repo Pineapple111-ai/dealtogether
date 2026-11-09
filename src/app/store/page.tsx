@@ -8,7 +8,7 @@ import { STORE_CATEGORIES, describeRule, isStoreCategory } from "@/lib/store";
 import PromoBanner from "@/components/common/PromoBanner";
 import { IMG } from "@/lib/images";
 
-export const metadata: Metadata = { title: "가전 쇼핑" };
+export const metadata: Metadata = { title: "가전 쇼핑", alternates: { canonical: "/store" } };
 
 type SP = Promise<{ category?: string; brand?: string; sort?: string; q?: string }>;
 

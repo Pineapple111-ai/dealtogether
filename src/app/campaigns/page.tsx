@@ -4,7 +4,7 @@ import CampaignListing, { ListingSkeleton } from "@/components/campaign/Campaign
 import PromoBanner from "@/components/common/PromoBanner";
 import { IMG } from "@/lib/images";
 
-export const metadata: Metadata = { title: "전체 공동구매" };
+export const metadata: Metadata = { title: "전체 공동구매", alternates: { canonical: "/campaigns" } };
 
 export default function CampaignsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   return (

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import CampaignListing, { ListingSkeleton } from "@/components/campaign/CampaignListing";
 import { getBrandBySlug } from "@/lib/queries/listing";
@@ -7,6 +8,18 @@ type Props = {
   params: Promise<{ slug: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
+
+const BRAND_NAME: Record<string, string> = { samsung: "삼성전자", lg: "LG전자" };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const name = BRAND_NAME[slug] ?? "브랜드";
+  return {
+    title: `${name} 공동구매`,
+    description: `${name} 가전 패키지 공동구매. 함께 구매하면 달라지는 가격, 딜투게더.`,
+    alternates: { canonical: `/brands/${slug}` },
+  };
+}
 
 export default function BrandPage(props: Props) {
   return (

@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import CampaignListing, { ListingSkeleton } from "@/components/campaign/CampaignListing";
 
-export const metadata: Metadata = { title: "마감 임박" };
+export const metadata: Metadata = { title: "마감 임박", alternates: { canonical: "/closing-soon" } };
 
 export default function ClosingSoonPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   return (
